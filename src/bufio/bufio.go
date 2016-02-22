@@ -33,8 +33,8 @@ type Reader struct { // io.Reader的缓存版本
 	rd           io.Reader // reader provided by the client
 	r, w         int       // buf read and write positions
 	err          error     // 读取错误消息
-	lastByte     int
-	lastRuneSize int
+	lastByte     int       // 上次读取的Byte
+	lastRuneSize int       // 上次读取的rune的大小
 }
 
 const minReadBufferSize = 16 // 最小的读Buffer大小16个字节
@@ -52,7 +52,7 @@ func NewReaderSize(rd io.Reader, size int) *Reader { // 创建新的bufio.Reader
 	if size < minReadBufferSize { // 设定buffer大小，最小为minReadBufferSize,16个字节
 		size = minReadBufferSize
 	}
-	r := new(Reader)
+	r := new(Reader)                // 创建一个Reader结构
 	r.reset(make([]byte, size), rd) // 创建一个Reader结构，分配底层Reader为rd
 	return r
 }
@@ -70,8 +70,8 @@ func (b *Reader) Reset(r io.Reader) { // 放弃所有buffer中的数据，并且
 
 func (b *Reader) reset(buf []byte, r io.Reader) { // 设置buf和底层的io.Reader
 	*b = Reader{
-		buf:          buf,
-		rd:           r,
+		buf:          buf, // 设置新的buffer
+		rd:           r,   // 设置底层的io.Reader
 		lastByte:     -1,
 		lastRuneSize: -1,
 	}
@@ -230,7 +230,7 @@ func (b *Reader) ReadByte() (c byte, err error) { // 从bufio.Reader中读取一
 	}
 	c = b.buf[b.r]
 	b.r++
-	b.lastByte = int(c)
+	b.lastByte = int(c) // 设置上次读到的byte
 	return c, nil
 }
 
@@ -675,7 +675,7 @@ func (b *Writer) WriteString(s string) (int, error) { // 写字符串
 
 // ReadFrom implements io.ReaderFrom.
 func (b *Writer) ReadFrom(r io.Reader) (n int64, err error) { // 从io.Reader读，写入Writer
-	if b.Buffered() == 0 {
+	if b.Buffered() == 0 { // 如果当前buffer没有空间了
 		if w, ok := b.wr.(io.ReaderFrom); ok {
 			return w.ReadFrom(r)
 		}

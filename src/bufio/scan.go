@@ -80,9 +80,9 @@ const (
 // The split function defaults to ScanLines.
 func NewScanner(r io.Reader) *Scanner { // 创建一个新的Scanner，缺省的split函数是按行切割
 	return &Scanner{
-		r:            r,                  // 缺省的io.Reader
-		split:        ScanLines,          // split函数，缺省为按行分割
-		maxTokenSize: MaxScanTokenSize,   // 最大Token大小，64K
+		r:            r,                // 缺省的io.Reader
+		split:        ScanLines,        // split函数，缺省为按行分割
+		maxTokenSize: MaxScanTokenSize, // 最大Token大小，64K
 	}
 }
 

@@ -358,8 +358,8 @@ func Map(mapping func(r rune) rune, s []byte) []byte {
 	// In the worst case, the slice can grow when mapped, making
 	// things unpleasant.  But it's so rare we barge in assuming it's
 	// fine.  It could also shrink but that falls out naturally.
-	maxbytes := len(s) // length of b
-	nbytes := 0        // number of bytes encoded in b
+	maxbytes := len(s)          // length of b
+	nbytes := 0                 // number of bytes encoded in b
 	b := make([]byte, maxbytes) // 创建最终需要返回的[]byte
 	for i := 0; i < len(s); {
 		wid := 1
