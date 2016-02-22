@@ -29,7 +29,7 @@ type clientHandshakeState struct {
 }
 
 func (c *Conn) clientHandshake() error { // 执行客户端握手
-	if c.config == nil {
+	if c.config == nil { // 如果没有设置config，设置为缺省config
 		c.config = defaultConfig()
 	}
 
@@ -38,7 +38,7 @@ func (c *Conn) clientHandshake() error { // 执行客户端握手
 	}
 
 	nextProtosLength := 0
-	for _, proto := range c.config.NextProtos {
+	for _, proto := range c.config.NextProtos { // 遍历所有的协议
 		if l := len(proto); l == 0 || l > 255 {
 			return errors.New("tls: invalid NextProtos value")
 		} else {
@@ -56,10 +56,10 @@ func (c *Conn) clientHandshake() error { // 执行客户端握手
 		sni = ""
 	}
 
-	hello := &clientHelloMsg{
-		vers:                c.config.maxVersion(),
+	hello := &clientHelloMsg{ // 构造hello message消息
+		vers:                c.config.maxVersion(), // 客户端协议版本号
 		compressionMethods:  []uint8{compressionNone},
-		random:              make([]byte, 32),
+		random:              make([]byte, 32), // 客户端握手要发送的随机数
 		ocspStapling:        true,
 		scts:                true,
 		serverName:          sni,
@@ -261,7 +261,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		certs[i] = cert
 	}
 
-	if !c.config.InsecureSkipVerify {
+	if !c.config.InsecureSkipVerify { // 如果需要校验证书
 		opts := x509.VerifyOptions{
 			Roots:         c.config.RootCAs,
 			CurrentTime:   c.config.time(),

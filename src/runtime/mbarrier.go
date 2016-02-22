@@ -20,6 +20,7 @@ import (
 	"runtime/internal/sys"
 	"unsafe"
 )
+
 // markwb是mark阶段的write barrier，也是这个阶段仅有的barrier
 // markwb is the mark-phase write barrier, the only barrier we have.
 // The rest of this file exists only to make calls to this function.
@@ -92,7 +93,7 @@ import (
 // stack frames that have not been active.
 //go:nowritebarrierrec
 func gcmarkwb_m(slot *uintptr, ptr uintptr) {
-	if writeBarrier.needed {
+	if writeBarrier.needed { // 如果需要写屏障
 		if ptr != 0 && inheap(ptr) { // 对指针赋值，如果指针非空，并且ptr指向堆内地址，调用shade
 			shade(ptr)
 		}

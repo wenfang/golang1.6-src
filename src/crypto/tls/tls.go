@@ -28,7 +28,7 @@ import (
 // using conn as the underlying transport.
 // The configuration config must be non-nil and must include
 // at least one certificate or else set GetCertificate.
-func Server(conn net.Conn, config *Config) *Conn { // 返回tls server端连接，将conn进行包装
+func Server(conn net.Conn, config *Config) *Conn { // 返回tls server端连接，将conn进行包装，使其变成tls server
 	return &Conn{conn: conn, config: config}
 }
 

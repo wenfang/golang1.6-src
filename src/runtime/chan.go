@@ -161,7 +161,7 @@ func chansend(t *chantype, c *hchan, ep unsafe.Pointer, block bool, callerpc uin
 		t0 = cputicks() // 返回cpu 时钟周期数
 	}
 
-	lock(&c.lock)      // chan加锁
+	lock(&c.lock) // chan加锁
 
 	if c.closed != 0 {
 		unlock(&c.lock)
@@ -192,10 +192,10 @@ func chansend(t *chantype, c *hchan, ep unsafe.Pointer, block bool, callerpc uin
 		return true
 	}
 
-		if !block { // 如果非阻塞，当前没有等待接收者，返回false
-			unlock(&c.lock)
-			return false
-		}
+	if !block { // 如果非阻塞，当前没有等待接收者，返回false
+		unlock(&c.lock)
+		return false
+	}
 
 	// Block on the channel.  Some receiver will complete our operation for us.
 	gp := getg()

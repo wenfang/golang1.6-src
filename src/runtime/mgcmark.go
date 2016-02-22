@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	fixedRootFinalizers = iota
-	fixedRootFlushCaches
+	fixedRootFinalizers  = iota // Finalizers部分的root
+	fixedRootFlushCaches        //flushcaches部分的root
 	fixedRootCount
 
 	// rootBlockBytes is the number of bytes to scan per data or
 	// BSS root.
-	rootBlockBytes = 256 << 10
+	rootBlockBytes = 256 << 10 // 256K
 
 	// rootBlockSpans is the number of spans to scan per span
 	// root.
@@ -34,28 +34,28 @@ const (
 //go:nowritebarrier
 func gcMarkRootPrepare() {
 	// Compute how many data and BSS root blocks there are.
-	nBlocks := func(bytes uintptr) int {
+	nBlocks := func(bytes uintptr) int { // 计算有多少数据，按照256K对齐
 		return int((bytes + rootBlockBytes - 1) / rootBlockBytes)
 	}
 
 	work.nDataRoots = 0
 	for datap := &firstmoduledata; datap != nil; datap = datap.next {
-		nDataRoots := nBlocks(datap.edata - datap.data)
-		if nDataRoots > work.nDataRoots {
+		nDataRoots := nBlocks(datap.edata - datap.data) // 数据段的大小
+		if nDataRoots > work.nDataRoots {               // 取最大的数据root
 			work.nDataRoots = nDataRoots
 		}
 	}
 
 	work.nBSSRoots = 0
 	for datap := &firstmoduledata; datap != nil; datap = datap.next {
-		nBSSRoots := nBlocks(datap.ebss - datap.bss)
-		if nBSSRoots > work.nBSSRoots {
+		nBSSRoots := nBlocks(datap.ebss - datap.bss) // bss段的大小
+		if nBSSRoots > work.nBSSRoots {              // 取最大的bss段的大小
 			work.nBSSRoots = nBSSRoots
 		}
 	}
 
 	// Compute number of span roots.
-	work.nSpanRoots = (len(work.spans) + rootBlockSpans - 1) / rootBlockSpans
+	work.nSpanRoots = (len(work.spans) + rootBlockSpans - 1) / rootBlockSpans // 计算spanroot的大小
 
 	// Snapshot of allglen. During concurrent scan, we just need
 	// to be consistent about how many markroot jobs we create and
@@ -65,16 +65,16 @@ func gcMarkRootPrepare() {
 	// roots they create during the concurrent phase will be
 	// scanned during mark termination. During mark termination,
 	// allglen isn't changing, so we'll scan all Gs.
-	work.nStackRoots = int(atomic.Loaduintptr(&allglen))
+	work.nStackRoots = int(atomic.Loaduintptr(&allglen)) // 要scan多少个goroutine的栈
 
-	work.markrootNext = 0
+	work.markrootNext = 0 // 下一个要进行的markroot任务
 	work.markrootJobs = uint32(fixedRootCount + work.nDataRoots + work.nBSSRoots + work.nSpanRoots + work.nStackRoots)
 }
 
 // gcMarkRootCheck checks that all roots have been scanned. It is
 // purely for debugging.
 func gcMarkRootCheck() {
-	if work.markrootNext < work.markrootJobs {
+	if work.markrootNext < work.markrootJobs { // 还有遗留的markroot任务，抛出异常
 		print(work.markrootNext, " of ", work.markrootJobs, " markroot jobs done\n")
 		throw("left over markroot jobs")
 	}
@@ -98,7 +98,7 @@ var oneptrmask = [...]uint8{1}
 // Preemption must be disabled (because this uses a gcWork).
 //
 //go:nowritebarrier
-func markroot(i uint32) {
+func markroot(i uint32) { // scan第i个根
 	// TODO: Consider using getg().m.p.ptr().gcw.
 	var gcw gcWork
 
@@ -935,7 +935,7 @@ func scanblock(b0, n0 uintptr, ptrmask *uint8, gcw *gcWork) { // scan从b0长度
 	for i := uintptr(0); i < n; { // 查找每个word的bit
 		// Find bits for the next word.
 		bits := uint32(*addb(ptrmask, i/(sys.PtrSize*8)))
-		if bits == 0 {                                // 如果bits全为0，查找下一个word
+		if bits == 0 { // 如果bits全为0，查找下一个word
 			i += sys.PtrSize * 8
 			continue
 		}

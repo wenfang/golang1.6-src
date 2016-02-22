@@ -20,7 +20,7 @@ import "unsafe"
 // Callers can keep state in the object but the first word is
 // smashed by freeing and reallocating.
 type fixalloc struct { // fixalloc结构
-	size   uintptr        //  用来分配多大的对象
+	size   uintptr                     //  用来分配多大的对象
 	first  func(arg, p unsafe.Pointer) // called first time p is returned
 	arg    unsafe.Pointer
 	list   *mlink // 当前结构的连接列表
@@ -69,7 +69,7 @@ func (f *fixalloc) alloc() unsafe.Pointer {
 	}
 	if uintptr(f.nchunk) < f.size {
 		f.chunk = persistentalloc(_FixAllocChunk, 0, f.stat)
-		f.nchunk = _FixAllocChunk                                      // 设定当前chunk的大小为16K
+		f.nchunk = _FixAllocChunk // 设定当前chunk的大小为16K
 	}
 
 	v := f.chunk
@@ -77,7 +77,7 @@ func (f *fixalloc) alloc() unsafe.Pointer {
 		f.first(f.arg, v)
 	}
 	f.chunk = add(f.chunk, f.size)
-	f.nchunk -= uint32(f.size)                              // 当前chunk仍保留的内存的大小
+	f.nchunk -= uint32(f.size) // 当前chunk仍保留的内存的大小
 	f.inuse += f.size
 	return v
 }

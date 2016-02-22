@@ -257,7 +257,7 @@ type Config struct { // 用来配置TLS Client或Server，被传递进TLS后就�
 	// to present to the other side of the connection.
 	// Server configurations must include at least one certificate
 	// or else set GetCertificate.
-	Certificates []Certificate
+	Certificates []Certificate // 证书链
 
 	// NameToCertificate maps from a certificate name to an element of
 	// Certificates. Note that a certificate name can be of the form
@@ -305,7 +305,7 @@ type Config struct { // 用来配置TLS Client或Server，被传递进TLS后就�
 	// presented by the server and any host name in that certificate.
 	// In this mode, TLS is susceptible to man-in-the-middle attacks.
 	// This should be used only for testing.
-	InsecureSkipVerify bool
+	InsecureSkipVerify bool // 控制是否客户端校验服务器的证书链和主机名
 
 	// CipherSuites is a list of supported cipher suites. If CipherSuites
 	// is nil, TLS uses a list of suites supported by the implementation.
@@ -444,7 +444,7 @@ func (c *Config) rand() io.Reader {
 	return r
 }
 
-func (c *Config) time() time.Time {
+func (c *Config) time() time.Time { // 获取当前的时间
 	t := c.Time
 	if t == nil {
 		t = time.Now
@@ -674,7 +674,7 @@ type dsaSignature struct {
 
 type ecdsaSignature dsaSignature
 
-var emptyConfig Config
+var emptyConfig Config // 空config
 
 func defaultConfig() *Config { // 获得缺省的Config，是空Config
 	return &emptyConfig

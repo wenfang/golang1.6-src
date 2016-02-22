@@ -200,7 +200,7 @@ func readgogc() int32 { // 读GOGC环境变量
 	if p == "" {          // 如果为空，返回100
 		return 100
 	}
-	if p == "off" {
+	if p == "off" { // 如果是off设置为-1
 		return -1
 	}
 	return int32(atoi(p)) // 否则返回GOGC的数量值
@@ -210,9 +210,9 @@ func readgogc() int32 { // 读GOGC环境变量
 // just before we're about to start letting user code run.
 // It kicks off the background sweeper goroutine and enables GC.
 func gcenable() { // 在启动用户代码执行前执行，开启gc
-	c := make(chan int, 1) // 创建chan
-	go bgsweep(c)          // 启动bgsweep执行
-	<-c
+	c := make(chan int, 1)   // 创建chan
+	go bgsweep(c)            // 启动bgsweep执行
+	<-c                      // 等待chan
 	memstats.enablegc = true // now that runtime is initialized, GC is okay
 }
 
@@ -240,7 +240,7 @@ var gcphase uint32
 // If you change it, you must change the compiler too.
 var writeBarrier struct {
 	enabled bool // compiler emits a check of this before calling write barrier
-	needed  bool // whether we need a write barrier for current GC phase
+	needed  bool // whether we need a write barrier for current GC phase 是否在并发的gc阶段需要写屏障
 	cgo     bool // whether we need a write barrier for a cgo check
 }
 
@@ -272,8 +272,8 @@ const (
 
 //go:nosplit
 func setGCPhase(x uint32) { // 设置gc阶段，同时根据阶段设置是否启动写屏障
-	atomic.Store(&gcphase, x)
-	writeBarrier.needed = gcphase == _GCmark || gcphase == _GCmarktermination
+	atomic.Store(&gcphase, x)                                                 // 存储gc的阶段为x
+	writeBarrier.needed = gcphase == _GCmark || gcphase == _GCmarktermination // 在mark阶段和marktermination阶段需要writeBarrier
 	writeBarrier.enabled = writeBarrier.needed || writeBarrier.cgo
 }
 
@@ -1556,7 +1556,7 @@ func gcFlushGCWork() {
 // gcMark runs the mark (or, for concurrent GC, mark termination)
 // STW is in effect at this point.
 //TODO go:nowritebarrier
-func gcMark(start_time int64) {
+func gcMark(start_time int64) { // 运行mark阶段
 	if debug.allocfreetrace > 0 {
 		tracegc()
 	}
@@ -1564,7 +1564,7 @@ func gcMark(start_time int64) {
 	if gcphase != _GCmarktermination {
 		throw("in gcMark expecting to see gcphase as _GCmarktermination")
 	}
-	work.tstart = start_time
+	work.tstart = start_time // 设置启动时间
 
 	gcCopySpans() // TODO(rlh): should this be hoisted and done only once? Right now it is done for normal marking and also for checkmarking.
 

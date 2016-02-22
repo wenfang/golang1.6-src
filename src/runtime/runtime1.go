@@ -23,6 +23,7 @@ const (
 
 var traceback_cache uint32 = 2 << tracebackShift
 var traceback_env uint32
+
 // GOTRACEBACK环境变量控制go程序在crash和退出时的行为
 // gotraceback returns the current traceback settings.
 //
@@ -34,7 +35,7 @@ var traceback_env uint32
 //
 //go:nosplit
 func gotraceback() (level int32, all, crash bool) {
-	_g_ := getg()     // 返回当前的goroutine
+	_g_ := getg() // 返回当前的goroutine
 	all = _g_.m.throwing > 0
 	if _g_.m.traceback != 0 {
 		level = int32(_g_.m.traceback)
@@ -457,8 +458,8 @@ func timediv(v int64, div int32, rem *int32) int32 {
 //go:nosplit
 func acquirem() *m { // 获得当前goroutine对应的m，并给m加锁
 	_g_ := getg() // 获得当前的goroutine
-	_g_.m.locks++
-	return _g_.m // 获得goroutine对应的m
+	_g_.m.locks++ // 给当前的m加锁
+	return _g_.m  // 获得goroutine对应的m
 }
 
 //go:nosplit

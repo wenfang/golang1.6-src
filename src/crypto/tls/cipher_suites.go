@@ -72,7 +72,7 @@ type cipherSuite struct { // 加密套件
 	aead   func(key, fixedNonce []byte) cipher.AEAD
 }
 
-var cipherSuites = []*cipherSuite{
+var cipherSuites = []*cipherSuite{ // 加密套件slice
 	// Ciphersuite order is chosen so that ECDHE comes before plain RSA
 	// and RC4 comes before AES (because of the Lucky13 attack).
 	{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 16, 0, 4, ecdheRSAKA, suiteECDHE | suiteTLS12, nil, nil, aeadAESGCM},
@@ -263,7 +263,7 @@ func mutualCipherSuite(have []uint16, want uint16) *cipherSuite {
 
 // A list of the possible cipher suite ids. Taken from
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml
-const (
+const ( // 加密套件id的列表
 	TLS_RSA_WITH_RC4_128_SHA                uint16 = 0x0005
 	TLS_RSA_WITH_3DES_EDE_CBC_SHA           uint16 = 0x000a
 	TLS_RSA_WITH_AES_128_CBC_SHA            uint16 = 0x002f

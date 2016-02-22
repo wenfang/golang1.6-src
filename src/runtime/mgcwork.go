@@ -12,7 +12,7 @@ import (
 
 const (
 	_Debugwbufs  = false // if true check wbufs consistency
-	_WorkbufSize = 2048  // in bytes; larger values result in less contention
+	_WorkbufSize = 2048  // in bytes; larger values result in less contention workbuf的大小2K
 )
 
 // GC的work pool的抽象
@@ -36,15 +36,15 @@ const (
 // Write barriers on workbuf pointers may also be dangerous in the GC.
 type wbufptr uintptr // 指向workbuf的指针
 
-func wbufptrOf(w *workbuf) wbufptr {
+func wbufptrOf(w *workbuf) wbufptr { // 获得指向workbuf的指针
 	return wbufptr(unsafe.Pointer(w))
 }
 
-func (wp wbufptr) ptr() *workbuf {
+func (wp wbufptr) ptr() *workbuf { // 根据指向workbuf的指针转换为workbuf结构
 	return (*workbuf)(unsafe.Pointer(wp))
 }
 
-// gcWork为垃圾收集器提供了产生及消费work的能力。
+// gcWork为垃圾收集器提供了产生及消费work的接口。
 // A gcWork provides the interface to produce and consume work for the
 // garbage collector.
 //
@@ -70,7 +70,7 @@ func (wp wbufptr) ptr() *workbuf {
 // gcWork may locally hold GC work buffers. This can be done by
 // disabling preemption (systemstack or acquirem).
 type gcWork struct {
-	// wbuf1 and wbuf2 are the primary and secondary work buffers.
+	// wbuf1 and wbuf2 are the primary and secondary work buffers. wbuf1和wbuf2是主要的和次要的work buffer
 	//
 	// This can be thought of as a stack of both work buffers'
 	// pointers concatenated. When we pop the last pointer, we
@@ -99,13 +99,13 @@ type gcWork struct {
 	scanWork int64
 }
 
-func (w *gcWork) init() {
-	w.wbuf1 = wbufptrOf(getempty(101))
+func (w *gcWork) init() { // 初始化gcWork
+	w.wbuf1 = wbufptrOf(getempty(101)) // 从empty中获得workbuf赋值给wbuf1
 	wbuf2 := trygetfull(102)
 	if wbuf2 == nil {
 		wbuf2 = getempty(103)
 	}
-	w.wbuf2 = wbufptrOf(wbuf2)
+	w.wbuf2 = wbufptrOf(wbuf2) // 尝试从full中获得workbuf若没有则从empty中获得workbuf赋值给wbuf2
 }
 
 // put enqueues a pointer for the garbage collector to trace.
@@ -114,23 +114,23 @@ func (w *gcWork) init() {
 func (ww *gcWork) put(obj uintptr) { // 将obj指针进行排队
 	w := (*gcWork)(noescape(unsafe.Pointer(ww))) // TODO: remove when escape analysis is fixed
 
-	wbuf := w.wbuf1.ptr()
-	if wbuf == nil {     // 如果指针为空
-		w.init()
-		wbuf = w.wbuf1.ptr()
+	wbuf := w.wbuf1.ptr() // 获得wbuf1指向的workbuf结构
+	if wbuf == nil {      // 如果指针为空，表面还没有初始化
+		w.init()             // 执行gcWork的初始化
+		wbuf = w.wbuf1.ptr() // 获取gcWork中的wbuf1
 		// wbuf is empty at this point.
-	} else if wbuf.nobj == len(wbuf.obj) {
-		w.wbuf1, w.wbuf2 = w.wbuf2, w.wbuf1
-		wbuf = w.wbuf1.ptr()
-		if wbuf.nobj == len(wbuf.obj) {
-			putfull(wbuf, 132)
-			wbuf = getempty(133)
-			w.wbuf1 = wbufptrOf(wbuf)
+	} else if wbuf.nobj == len(wbuf.obj) { // 如果workbuf已经满了
+		w.wbuf1, w.wbuf2 = w.wbuf2, w.wbuf1 // 交换wbuf1和wbuf2
+		wbuf = w.wbuf1.ptr()                // 获得交换后的workbuf结构
+		if wbuf.nobj == len(wbuf.obj) {     // 如果wbuf2也是满的
+			putfull(wbuf, 132)        // 将wbuf加入到work.full队列中
+			wbuf = getempty(133)      // 获得一个新的workbuf结构
+			w.wbuf1 = wbufptrOf(wbuf) // 为wbuf1赋值
 		}
 	}
 
 	wbuf.obj[wbuf.nobj] = obj // 将obj压入到wbuf中
-	wbuf.nobj++
+	wbuf.nobj++               // obj的数量增加
 }
 
 // tryGet dequeues a pointer for the garbage collector to trace.
@@ -173,18 +173,18 @@ func (ww *gcWork) tryGet() uintptr { // 从gcWork中获得一个对象的指针
 func (ww *gcWork) get() uintptr {
 	w := (*gcWork)(noescape(unsafe.Pointer(ww))) // TODO: remove when escape analysis is fixed
 
-	wbuf := w.wbuf1.ptr()
-	if wbuf == nil {
+	wbuf := w.wbuf1.ptr() // 获取wbuf1,赋值为wbuf
+	if wbuf == nil {      // 如果wbuf为空，初始化
 		w.init()
 		wbuf = w.wbuf1.ptr()
 		// wbuf is empty at this point.
 	}
-	if wbuf.nobj == 0 {
-		w.wbuf1, w.wbuf2 = w.wbuf2, w.wbuf1
+	if wbuf.nobj == 0 { //wbuf1中没有对象
+		w.wbuf1, w.wbuf2 = w.wbuf2, w.wbuf1 // 交换wbuf1和wbuf2
 		wbuf = w.wbuf1.ptr()
-		if wbuf.nobj == 0 {
+		if wbuf.nobj == 0 { // 仍然没有obj
 			owbuf := wbuf
-			wbuf = getfull(185)
+			wbuf = getfull(185) // 从work.full中取一个workbuf
 			if wbuf == nil {
 				return 0
 			}
@@ -196,7 +196,7 @@ func (ww *gcWork) get() uintptr {
 	// TODO: This might be a good place to add prefetch code
 
 	wbuf.nobj--
-	return wbuf.obj[wbuf.nobj]
+	return wbuf.obj[wbuf.nobj] // 取出来一个obj
 }
 
 // dispose returns any cached pointers to the global queue.
@@ -254,7 +254,7 @@ func (w *gcWork) balance() {
 
 // empty returns true if w has no mark work available.
 //go:nowritebarrier
-func (w *gcWork) empty() bool {
+func (w *gcWork) empty() bool { // 如果没有需要进行的mark工作，返回true
 	return w.wbuf1 == 0 || (w.wbuf1.ptr().nobj == 0 && w.wbuf2.ptr().nobj == 0)
 }
 
@@ -263,13 +263,13 @@ func (w *gcWork) empty() bool {
 // avoid contending on the global work buffer lists.
 
 type workbufhdr struct {
-	node  lfnode // must be first 必须是第一个节点
+	node  lfnode // must be first 必须是第一项
 	nobj  int    // workbuf中有多少个对象
-	inuse bool   // This workbuf is in use by some gorotuine and is not on the work.empty/full queues.
-	log   [4]int // line numbers forming a history of ownership changes to workbuf
+	inuse bool   // This workbuf is in use by some gorotuine and is not on the work.empty/full queues. 是否正在被goroutine使用，没有在work.empty和work.full队列中
+	log   [4]int // line numbers forming a history of ownership changes to workbuf 行号，组成了变更该workbuf的历史记录
 }
 
-type workbuf struct {
+type workbuf struct { // 总共2K大小的workbuf，前面是workbuf头部
 	workbufhdr // 封装了一个workbufhdr结构
 	// account for the above fields
 	obj [(_WorkbufSize - unsafe.Sizeof(workbufhdr{})) / sys.PtrSize]uintptr
@@ -287,18 +287,18 @@ type workbuf struct {
 
 // logget records the past few values of entry to aid in debugging.
 // logget checks the buffer b is not currently in use.
-func (b *workbuf) logget(entry int) {
+func (b *workbuf) logget(entry int) { // 记录workbuf的使用情况
 	if !_Debugwbufs {
 		return
 	}
-	if b.inuse {
+	if b.inuse { // 如果workbuf正在被使用，抛出异常
 		println("runtime: logget fails log entry=", entry,
 			"b.log[0]=", b.log[0], "b.log[1]=", b.log[1],
 			"b.log[2]=", b.log[2], "b.log[3]=", b.log[3])
 		throw("logget: get not legal")
 	}
-	b.inuse = true
-	copy(b.log[1:], b.log[:])
+	b.inuse = true            // 设置正在被使用
+	copy(b.log[1:], b.log[:]) // 变更使用历史记录
 	b.log[0] = entry
 }
 
@@ -315,12 +315,12 @@ func (b *workbuf) logput(entry int) {
 		throw("logput: put not legal")
 	}
 	b.inuse = false
-	copy(b.log[1:], b.log[:])
+	copy(b.log[1:], b.log[:]) // 变更使用历史记录
 	b.log[0] = entry
 }
 
 func (b *workbuf) checknonempty() { // 要求workbuf不能为空
-	if b.nobj == 0 {
+	if b.nobj == 0 { // 如果workbuf中保存的对象数量为0,抛出异常
 		println("runtime: nonempty check fails",
 			"b.log[0]=", b.log[0], "b.log[1]=", b.log[1],
 			"b.log[2]=", b.log[2], "b.log[3]=", b.log[3])
@@ -344,9 +344,9 @@ func (b *workbuf) checkempty() { // 要求workbuf必须为空
 //go:nowritebarrier
 func getempty(entry int) *workbuf {
 	var b *workbuf
-	if work.empty != 0 { // 如果work.empty
-		b = (*workbuf)(lfstackpop(&work.empty))
-		if b != nil {
+	if work.empty != 0 { // 如果work.empty非空
+		b = (*workbuf)(lfstackpop(&work.empty)) // 返回一个workbuf结构
+		if b != nil {                           // 取出来了workbuf结构
 			b.checkempty() // 要求取出的workbuf必须为空
 		}
 	}
@@ -360,7 +360,7 @@ func getempty(entry int) *workbuf {
 // putempty puts a workbuf onto the work.empty list.
 // Upon entry this go routine owns b. The lfstackpush relinquishes ownership.
 //go:nowritebarrier
-func putempty(b *workbuf, entry int) {
+func putempty(b *workbuf, entry int) { // 将workbuf加入到work.empty队列中
 	b.checkempty()
 	b.logput(entry)
 	lfstackpush(&work.empty, &b.node)
@@ -371,9 +371,9 @@ func putempty(b *workbuf, entry int) {
 // with the mutators for ownership of partially full buffers.
 //go:nowritebarrier
 func putfull(b *workbuf, entry int) {
-	b.checknonempty()
-	b.logput(entry)
-	lfstackpush(&work.full, &b.node)
+	b.checknonempty()                // 检查workbuf不能为空
+	b.logput(entry)                  // 记录workbuf的使用日志
+	lfstackpush(&work.full, &b.node) // 将workbuf加入到work.full队列中
 
 	// We just made more work available. Let the GC controller
 	// know so it can encourage more workers to run.
@@ -385,7 +385,7 @@ func putfull(b *workbuf, entry int) {
 // trygetfull tries to get a full or partially empty workbuffer.
 // If one is not immediately available return nil
 //go:nowritebarrier
-func trygetfull(entry int) *workbuf {
+func trygetfull(entry int) *workbuf { // 尝试获得一个满的或者部分满的workbuffer
 	b := (*workbuf)(lfstackpop(&work.full))
 	if b != nil {
 		b.logget(entry)
@@ -457,18 +457,18 @@ func getfull(entry int) *workbuf {
 }
 
 //go:nowritebarrier
-func handoff(b *workbuf) *workbuf {
+func handoff(b *workbuf) *workbuf { // 返回一半的workbuf
 	// Make new buffer with half of b's pointers.
-	b1 := getempty(915)
-	n := b.nobj / 2
+	b1 := getempty(915) // 获得一个空的workbuf
+	n := b.nobj / 2     // 将b这个workbuf的对象数量除以2
 	b.nobj -= n
-	b1.nobj = n
+	b1.nobj = n // 平分对象数量
 	memmove(unsafe.Pointer(&b1.obj[0]), unsafe.Pointer(&b.obj[b.nobj]), uintptr(n)*unsafe.Sizeof(b1.obj[0]))
-	_g_ := getg()
-	_g_.m.gcstats.nhandoff++
-	_g_.m.gcstats.nhandoffcnt += uint64(n)
+	_g_ := getg()                          // 获得当前的goroutine
+	_g_.m.gcstats.nhandoff++               // handoff的次数增加
+	_g_.m.gcstats.nhandoffcnt += uint64(n) // handoff的总数量增加
 
 	// Put b on full list - let first half of b get stolen.
-	putfull(b, 942)
+	putfull(b, 942) // 将b加入work.full队列
 	return b1
 }

@@ -154,11 +154,11 @@ func semroot(addr *uint32) *semaRoot { // 返回对应addr的semaRoot结构
 
 func cansemacquire(addr *uint32) bool { // 获取addr位置的资源,addr位置为一个值，当为0时表明资源已被获得
 	for {
-		v := atomic.Load(addr)
-		if v == 0 {
+		v := atomic.Load(addr) // 取得addr位置的值
+		if v == 0 {            // 如果值为0，获取失败
 			return false
 		}
-		if atomic.Cas(addr, v, v-1) {
+		if atomic.Cas(addr, v, v-1) { // 将值减去1之后返回
 			return true
 		}
 	}

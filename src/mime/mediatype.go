@@ -26,13 +26,13 @@ func FormatMediaType(t string, param map[string]string) string { // 格式化媒
 		}
 		b.WriteString(strings.ToLower(t))
 	} else {
-	major, sub := t[:slash], t[slash+1:] // 分割成major和sub
+		major, sub := t[:slash], t[slash+1:] // 分割成major和sub
 		if !isToken(major) || !isToken(sub) {
 			return ""
 		}
 		b.WriteString(strings.ToLower(major))
 		b.WriteByte('/')
-	b.WriteString(strings.ToLower(sub)) // 转换为小写，写入b中
+		b.WriteString(strings.ToLower(sub)) // 转换为小写，写入b中
 	}
 
 	attrs := make([]string, 0, len(param)) // 创建一个属性slice并排序

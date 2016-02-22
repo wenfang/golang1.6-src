@@ -11,6 +11,7 @@ import (
 	"runtime/internal/atomic"
 	"runtime/internal/sys"
 )
+
 // parfor结构保存并行操作的状态信息
 // A parfor holds state for the parallel for operation.
 type parfor struct {

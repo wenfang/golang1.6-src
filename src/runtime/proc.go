@@ -276,7 +276,7 @@ func goready(gp *g, traceskip int) {
 }
 
 //go:nosplit
-func acquireSudog() *sudog {
+func acquireSudog() *sudog { // 获取一个sudog结构
 	// Delicate dance: the semaphore implementation calls
 	// acquireSudog, acquireSudog calls new(sudog),
 	// new calls malloc, malloc can call the garbage collector,
@@ -285,7 +285,7 @@ func acquireSudog() *sudog {
 	// Break the cycle by doing acquirem/releasem around new(sudog).
 	// The acquirem/releasem increments m.locks during new(sudog),
 	// which keeps the garbage collector from being invoked.
-	mp := acquirem()
+	mp := acquirem() // 获得当前goroutine对应的m
 	pp := mp.p.ptr()
 	if len(pp.sudogcache) == 0 {
 		lock(&sched.sudoglock)
@@ -397,7 +397,7 @@ func allgadd(gp *g) {
 
 	lock(&allglock)
 	allgs = append(allgs, gp)
-	allglen = uintptr(len(allgs))
+	allglen = uintptr(len(allgs)) // 计算goroutine的数量
 	unlock(&allglock)
 }
 
@@ -625,7 +625,7 @@ func isscanstatus(status uint32) bool {
 // All reads and writes of g's status go through readgstatus, casgstatus
 // castogscanstatus, casfrom_Gscanstatus.
 //go:nosplit
-func readgstatus(gp *g) uint32 {
+func readgstatus(gp *g) uint32 { // 读取goroutine的状态
 	return atomic.Load(&gp.atomicstatus)
 }
 

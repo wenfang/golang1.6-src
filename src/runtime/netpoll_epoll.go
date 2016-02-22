@@ -19,7 +19,7 @@ func epollwait(epfd int32, ev *epollevent, nev, timeout int32) int32
 func closeonexec(fd int32)
 
 var (
-	epfd           int32 = -1 // epoll descriptor 全局的epoll描述符
+	epfd int32 = -1 // epoll descriptor 全局的epoll描述符
 )
 
 func netpollinit() { // 初始化epoll,创建epoll句柄并设置close_on_exec

@@ -11,14 +11,14 @@ import (
 )
 
 func init() {
-	crypto.RegisterHash(crypto.SHA1, New) // ×¢²áSHA1 HASHº¯Êý
+	crypto.RegisterHash(crypto.SHA1, New) // æ³¨å†ŒSHA1 HASHå‡½æ•°
 }
 
 // The size of a SHA1 checksum in bytes.
-const Size = 20 // »ñµÃSHA1½á¹ûµÄ´óÐ¡
+const Size = 20 // èŽ·å¾—SHA1ç»“æžœçš„å¤§å°
 
 // The blocksize of SHA1 in bytes.
-const BlockSize = 64 // SHA1µÄ¿é´óÐ¡£¬64×Ö½Ú
+const BlockSize = 64 // SHA1çš„å—å¤§å°ï¼Œ64å­—èŠ‚
 
 const (
 	chunk = 64
@@ -30,14 +30,14 @@ const (
 )
 
 // digest represents the partial evaluation of a checksum.
-type digest struct { // ÊµÏÖHash½Ó¿Ú¼ÆËãsha1 hash
+type digest struct { // å®žçŽ°HashæŽ¥å£è®¡ç®—sha1 hash
 	h   [5]uint32
 	x   [chunk]byte
 	nx  int
 	len uint64
 }
 
-func (d *digest) Reset() { // ÖØÖÃ
+func (d *digest) Reset() { // é‡ç½®
 	d.h[0] = init0
 	d.h[1] = init1
 	d.h[2] = init2
@@ -48,17 +48,17 @@ func (d *digest) Reset() { // ÖØÖÃ
 }
 
 // New returns a new hash.Hash computing the SHA1 checksum.
-func New() hash.Hash { // ´´½¨Ò»¸öÐÂµÄdigest
+func New() hash.Hash { // åˆ›å»ºä¸€ä¸ªæ–°çš„digest
 	d := new(digest)
 	d.Reset()
 	return d
 }
 
-func (d *digest) Size() int { return Size } // ·µ»Ø½á¹û×Ö·û³¤¶È
+func (d *digest) Size() int { return Size } // è¿”å›žç»“æžœå­—ç¬¦é•¿åº¦
 
-func (d *digest) BlockSize() int { return BlockSize } // ·µ»Ø¿é´óÐ¡
+func (d *digest) BlockSize() int { return BlockSize } // è¿”å›žå—å¤§å°
 
-func (d *digest) Write(p []byte) (nn int, err error) { // Ð´Èë´ý¼ÆËãµÄ×Ö·û
+func (d *digest) Write(p []byte) (nn int, err error) { // å†™å…¥å¾…è®¡ç®—çš„å­—ç¬¦
 	nn = len(p)
 	d.len += uint64(nn)
 	if d.nx > 0 {
@@ -81,7 +81,7 @@ func (d *digest) Write(p []byte) (nn int, err error) { // Ð´Èë´ý¼ÆËãµÄ×Ö·û
 	return
 }
 
-func (d0 *digest) Sum(in []byte) []byte { // ·µ»Ø½á¹ûÖµ
+func (d0 *digest) Sum(in []byte) []byte { // è¿”å›žç»“æžœå€¼
 	// Make a copy of d0 so that caller can keep writing and summing.
 	d := *d0
 	hash := d.checkSum()

@@ -79,11 +79,11 @@ type stackfreelist struct {
 var emptymspan mspan
 
 func allocmcache() *mcache { // 分配出mcache结构
-	lock(&mheap_.lock)                                 // 先给mheap加锁
+	lock(&mheap_.lock) // 先给mheap加锁
 	c := (*mcache)(mheap_.cachealloc.alloc())
-	unlock(&mheap_.lock)                               // 分配完结构后就给mheap解锁
-	memclr(unsafe.Pointer(c), unsafe.Sizeof(*c))       // 清除mcache结构
-	for i := 0; i < _NumSizeClasses; i++ {             // 对67个class的每个class，都设置为emptymspan
+	unlock(&mheap_.lock)                         // 分配完结构后就给mheap解锁
+	memclr(unsafe.Pointer(c), unsafe.Sizeof(*c)) // 清除mcache结构
+	for i := 0; i < _NumSizeClasses; i++ {       // 对67个class的每个class，都设置为emptymspan
 		c.alloc[i] = &emptymspan // 设置为不包含空闲对象的dummy mspan
 	}
 	c.next_sample = nextSample()
@@ -124,7 +124,7 @@ func (c *mcache) refill(sizeclass int32) *mspan {
 
 	// Get a new cached span from the central lists.
 	s = mheap_.central[sizeclass].mcentral.cacheSpan()
-	if s == nil {                                               // 获得mspan失败，内存溢出了
+	if s == nil { // 获得mspan失败，内存溢出了
 		throw("out of memory")
 	}
 	if s.freelist.ptr() == nil { // 如果分配出的是一个空mspan，抛出异常

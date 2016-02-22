@@ -16,8 +16,8 @@ import "runtime/internal/atomic"
 
 // Central list of free objects of a given size.
 type mcentral struct { // 给定大小的空闲对象
-	lock      mutex // mcentral的锁
-	sizeclass int32 // 该mcentral用于分配sizeclass大小的空间
+	lock      mutex     // mcentral的锁
+	sizeclass int32     // 该mcentral用于分配sizeclass大小的空间
 	nonempty  mSpanList // list of spans with a free object
 	empty     mSpanList // list of spans with no free objects (or cached in an mcache)
 }

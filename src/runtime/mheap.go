@@ -184,9 +184,9 @@ func recordspan(vh unsafe.Pointer, p unsafe.Pointer) { // 将mspan p记录到堆
 			n = cap(h_allspans) * 3 / 2
 		}
 		var new []*mspan
-		sp := (*slice)(unsafe.Pointer(&new))                         // 转换为slice指针
+		sp := (*slice)(unsafe.Pointer(&new)) // 转换为slice指针
 		sp.array = sysAlloc(uintptr(n)*sys.PtrSize, &memstats.other_sys)
-		if sp.array == nil {                                         // 分配空间失败
+		if sp.array == nil { // 分配空间失败
 			throw("runtime: cannot allocate memory")
 		}
 		sp.len = len(h_allspans) // 获得h_allspans的长度

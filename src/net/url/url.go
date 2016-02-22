@@ -42,7 +42,7 @@ func (e *Error) Temporary() bool {
 	return ok && t.Temporary()
 }
 
-func ishex(c byte) bool {
+func ishex(c byte) bool { // 判断一个byte是否是16进制
 	switch {
 	case '0' <= c && c <= '9':
 		return true
@@ -370,8 +370,8 @@ func (u *Userinfo) String() string { // 返回userinfo的字符串信息
 // Maybe rawurl is of the form scheme:path.
 // (Scheme must be [a-zA-Z][a-zA-Z0-9+-.]*)
 // If so, return scheme, path; else return "", rawurl.
-func getscheme(rawurl string) (scheme, path string, err error) {
-	for i := 0; i < len(rawurl); i++ {
+func getscheme(rawurl string) (scheme, path string, err error) { // 获取url的scheme
+	for i := 0; i < len(rawurl); i++ { // 变量rawurl中的每个字符
 		c := rawurl[i]
 		switch {
 		case 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z':
