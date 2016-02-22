@@ -46,6 +46,7 @@ var DefaultTransport RoundTripper = &Transport{ // 缺省的Transport，被Defau
 // DefaultMaxIdleConnsPerHost is the default value of Transport's
 // MaxIdleConnsPerHost.
 const DefaultMaxIdleConnsPerHost = 2
+
 // Transport是对RoundTripper的实现，支持HTTP
 // Transport is an implementation of RoundTripper that supports HTTP,
 // HTTPS, and HTTP proxies (for either HTTP or HTTPS with CONNECT).

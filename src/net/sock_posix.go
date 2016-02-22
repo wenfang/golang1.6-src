@@ -14,7 +14,7 @@ import (
 
 // A sockaddr represents a TCP, UDP, IP or Unix network endpoint
 // address that can be converted into a syscall.Sockaddr.
-type sockaddr interface {
+type sockaddr interface { // 浠ｈ〃sock鍦板潃
 	Addr
 
 	// family returns the platform-dependent address family
@@ -121,7 +121,7 @@ func (fd *netFD) dial(laddr, raddr sockaddr, deadline time.Time, cancel <-chan s
 	var err error
 	var lsa syscall.Sockaddr
 	if laddr != nil {
-		if lsa, err = laddr.sockaddr(fd.family); err != nil { // 先返回本地地址
+		if lsa, err = laddr.sockaddr(fd.family); err != nil { // 鍏堣繑鍥炴湰鍦板湴鍧�
 			return err
 		} else if lsa != nil {
 			if err := syscall.Bind(fd.sysfd, lsa); err != nil {

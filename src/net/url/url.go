@@ -69,12 +69,12 @@ func unhex(c byte) byte { // 从16进制字符转换为数字
 type encoding int
 
 const (
-	encodePath           encoding = 1 + iota // 字符出现在path上
-	encodeHost                               // 字符出现在host部分
+	encodePath encoding = 1 + iota // 字符出现在path上
+	encodeHost                     // 字符出现在host部分
 	encodeZone
 	encodeUserPassword
-	encodeQueryComponent                     // 字符出现在query部分
-	encodeFragment                           // 字符出现在fragment部分
+	encodeQueryComponent // 字符出现在query部分
+	encodeFragment       // 字符出现在fragment部分
 )
 
 type EscapeError string

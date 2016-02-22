@@ -697,7 +697,7 @@ func (c *conn) readRequest() (w *response, err error) { // 读出请求返回响
 	}
 
 	c.r.setReadLimit(c.server.initialReadLimitSize())
-	c.mu.Lock() // while using bufr
+	c.mu.Lock()                 // while using bufr
 	if c.lastMethod == "POST" { // 如果上一个方法为POST
 		// RFC 2616 section 4.1 tolerance for old buggy clients.
 		peek, _ := c.bufr.Peek(4) // ReadRequest will get err below

@@ -15,7 +15,7 @@ import (
 // interface.
 func interfaceTable(ifindex int) ([]Interface, error) { // 如果ifindex为0，返回所有网络接口
 	tab, err := syscall.NetlinkRIB(syscall.RTM_GETLINK, syscall.AF_UNSPEC) // 获得netlink rib
-	if err != nil {
+	if err != nil {                                                        // 获得netlink rib错误
 		return nil, os.NewSyscallError("netlinkrib", err)
 	}
 	msgs, err := syscall.ParseNetlinkMessage(tab) // 解析netlink信息

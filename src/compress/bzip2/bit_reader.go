@@ -9,6 +9,7 @@ import (
 	"io"
 )
 
+// bitReader封装io.Reader提供按位读取数据的能力
 // bitReader wraps an io.Reader and provides the ability to read values,
 // bit-by-bit, from it. Its Read* methods don't return the usual error
 // because the error handling was verbose. Instead, any error is kept and can
