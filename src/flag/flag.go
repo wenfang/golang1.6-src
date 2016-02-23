@@ -273,9 +273,9 @@ type FlagSet struct { // FlagSet结构
 	parsed        bool   // 是否已被解析
 	actual        map[string]*Flag
 	formal        map[string]*Flag
-	args          []string // arguments after flags
+	args          []string      // arguments after flags
 	errorHandling ErrorHandling // 错误处理
-	output        io.Writer // nil means stderr; use out() accessor
+	output        io.Writer     // nil means stderr; use out() accessor
 }
 
 // A Flag represents the state of a flag.

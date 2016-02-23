@@ -102,38 +102,38 @@ func markroot(i uint32) { // scan第i个根
 	// TODO: Consider using getg().m.p.ptr().gcw.
 	var gcw gcWork
 
-	baseData := uint32(fixedRootCount)
-	baseBSS := baseData + uint32(work.nDataRoots)
-	baseSpans := baseBSS + uint32(work.nBSSRoots)
-	baseStacks := baseSpans + uint32(work.nSpanRoots)
+	baseData := uint32(fixedRootCount)                // data起始的根的编号
+	baseBSS := baseData + uint32(work.nDataRoots)     // bss起始的根的编号
+	baseSpans := baseBSS + uint32(work.nBSSRoots)     // span起始的根的编号
+	baseStacks := baseSpans + uint32(work.nSpanRoots) // stack起始的根的编号
 
 	// Note: if you add a case here, please also update heapdump.go:dumproots.
 	switch {
-	case baseData <= i && i < baseBSS:
+	case baseData <= i && i < baseBSS: // 属于数据段
 		for datap := &firstmoduledata; datap != nil; datap = datap.next {
 			markrootBlock(datap.data, datap.edata-datap.data, datap.gcdatamask.bytedata, &gcw, int(i-baseData))
 		}
 
-	case baseBSS <= i && i < baseSpans:
+	case baseBSS <= i && i < baseSpans: // 属于bss段
 		for datap := &firstmoduledata; datap != nil; datap = datap.next {
 			markrootBlock(datap.bss, datap.ebss-datap.bss, datap.gcbssmask.bytedata, &gcw, int(i-baseBSS))
 		}
 
 	case i == fixedRootFinalizers:
-		for fb := allfin; fb != nil; fb = fb.alllink {
+		for fb := allfin; fb != nil; fb = fb.alllink { // 属于finalizer部分
 			scanblock(uintptr(unsafe.Pointer(&fb.fin[0])), uintptr(fb.cnt)*unsafe.Sizeof(fb.fin[0]), &finptrmask[0], &gcw)
 		}
 
-	case i == fixedRootFlushCaches:
+	case i == fixedRootFlushCaches: // 属于flushcaches部分
 		if gcphase == _GCmarktermination { // Do not flush mcaches during concurrent phase.
 			flushallmcaches()
 		}
 
-	case baseSpans <= i && i < baseStacks:
+	case baseSpans <= i && i < baseStacks: // 属于span部分
 		// mark MSpan.specials
 		markrootSpans(&gcw, int(i-baseSpans))
 
-	default:
+	default: // 属于goroutine的栈
 		// the rest is scanning goroutine stacks
 		if uintptr(i-baseStacks) >= allglen {
 			throw("markroot: bad index")
@@ -202,7 +202,7 @@ func markroot(i uint32) { // scan第i个根
 //
 //go:nowritebarrier
 func markrootBlock(b0, n0 uintptr, ptrmask0 *uint8, gcw *gcWork, shard int) {
-	if rootBlockBytes%(8*sys.PtrSize) != 0 {
+	if rootBlockBytes%(8*sys.PtrSize) != 0 { // rootBlockBytes必须是8个指针大小的整数倍
 		// This is necessary to pick byte offsets in ptrmask0.
 		throw("rootBlockBytes must be a multiple of 8*ptrSize")
 	}
@@ -218,7 +218,7 @@ func markrootBlock(b0, n0 uintptr, ptrmask0 *uint8, gcw *gcWork, shard int) {
 	}
 
 	// Scan this shard.
-	scanblock(b, n, ptrmask, gcw)
+	scanblock(b, n, ptrmask, gcw) // 查找b开始的位置，n为长度
 }
 
 // markrootSpans marks roots for one shard of work.spans.
@@ -927,23 +927,23 @@ func scanblock(b0, n0 uintptr, ptrmask *uint8, gcw *gcWork) { // scan从b0长度
 	// due to one of the throws below shows the original block
 	// base and extent.
 	b := b0
-	n := n0
+	n := n0 // 获取b和n的值
 
 	arena_start := mheap_.arena_start // 取出堆得起始和结束地址
 	arena_used := mheap_.arena_used
 
 	for i := uintptr(0); i < n; { // 查找每个word的bit
 		// Find bits for the next word.
-		bits := uint32(*addb(ptrmask, i/(sys.PtrSize*8)))
-		if bits == 0 { // 如果bits全为0，查找下一个word
-			i += sys.PtrSize * 8
+		bits := uint32(*addb(ptrmask, i/(sys.PtrSize*8))) // 8个word用0.5个word的位表示，1:16的关系，一个word用4位表示
+		if bits == 0 {                                    // 如果bits全为0，查找后面8个word
+			i += sys.PtrSize * 8 // 向后移动8个word
 			continue
 		}
-		for j := 0; j < 8 && i < n; j++ { // 一位一位的查找
+		for j := 0; j < 8 && i < n; j++ { // 一个word一个word的查找
 			if bits&1 != 0 { // 如果对应的对象是一个指针
 				// Same work as in scanobject; see comments there.
-				obj := *(*uintptr)(unsafe.Pointer(b + i))
-				if obj != 0 && arena_start <= obj && obj < arena_used {
+				obj := *(*uintptr)(unsafe.Pointer(b + i))               // 获得指针所在的位置
+				if obj != 0 && arena_start <= obj && obj < arena_used { // 指针在有效区域内
 					if obj, hbits, span := heapBitsForObject(obj, b, i); obj != 0 {
 						greyobject(obj, b, i, hbits, span, gcw) // 将对应的对象标记为grey
 					}

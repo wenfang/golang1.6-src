@@ -20,7 +20,7 @@ const (
 	m4 = 15839092249703872147
 )
 
-func memhash(p unsafe.Pointer, seed, s uintptr) uintptr {
+func memhash(p unsafe.Pointer, seed, s uintptr) uintptr { // 计算内存hash值
 	if GOARCH == "amd64" && GOOS != "nacl" && useAeshash {
 		return aeshash(p, seed, s)
 	}
