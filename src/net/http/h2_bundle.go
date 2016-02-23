@@ -4798,7 +4798,7 @@ func http2authorityAddr(authority string) (addr string) {
 
 // RoundTripOpt is like RoundTrip, but takes options.
 func (t *http2Transport) RoundTripOpt(req *Request, opt http2RoundTripOpt) (*Response, error) {
-	if req.URL.Scheme != "https" {
+	if req.URL.Scheme != "https" { // http2只支持https
 		return nil, errors.New("http2: unsupported scheme")
 	}
 

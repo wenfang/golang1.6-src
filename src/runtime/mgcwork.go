@@ -48,6 +48,7 @@ func (wp wbufptr) ptr() *workbuf { // 根据指向workbuf的指针转换为workb
 // A gcWork provides the interface to produce and consume work for the
 // garbage collector.
 //
+// gcWork可以在栈上如下使用
 // A gcWork can be used on the stack as follows:
 //
 //     var gcw gcWork
@@ -94,6 +95,7 @@ type gcWork struct {
 	// into work.bytesMarked by dispose.
 	bytesMarked uint64 // 该gcWork mark的字节数
 
+	// 在该gcWork上执行的Scan工作
 	// Scan work performed on this gcWork. This is aggregated into
 	// gcController by dispose and may also be flushed by callers.
 	scanWork int64
@@ -206,12 +208,12 @@ func (ww *gcWork) get() uintptr {
 // ability to hide pointers during the concurrent mark phase.
 //
 //go:nowritebarrier
-func (w *gcWork) dispose() {
-	if wbuf := w.wbuf1.ptr(); wbuf != nil {
-		if wbuf.nobj == 0 {
-			putempty(wbuf, 212)
+func (w *gcWork) dispose() { // 释放gcWork将wbuf1和wbuf2放回队列
+	if wbuf := w.wbuf1.ptr(); wbuf != nil { // 取回wbuf1的指针，如果wbuf1非空
+		if wbuf.nobj == 0 { // wbuf中无对象
+			putempty(wbuf, 212) // 放入work.empty队列
 		} else {
-			putfull(wbuf, 214)
+			putfull(wbuf, 214) // 放入work.full队列
 		}
 		w.wbuf1 = 0
 
@@ -223,12 +225,12 @@ func (w *gcWork) dispose() {
 		}
 		w.wbuf2 = 0
 	}
-	if w.bytesMarked != 0 {
+	if w.bytesMarked != 0 { // 如果该gcwork被mark的字节数非0
 		// dispose happens relatively infrequently. If this
 		// atomic becomes a problem, we should first try to
 		// dispose less and if necessary aggregate in a per-P
 		// counter.
-		atomic.Xadd64(&work.bytesMarked, int64(w.bytesMarked))
+		atomic.Xadd64(&work.bytesMarked, int64(w.bytesMarked)) // 增加work的mark的字节数
 		w.bytesMarked = 0
 	}
 	if w.scanWork != 0 {

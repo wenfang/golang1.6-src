@@ -14,7 +14,7 @@ import (
 
 // Statistics.
 // If you edit this structure, also edit type MemStats below.
-type mstats struct {
+type mstats struct { // 内存的统计状态
 	// General statistics.
 	alloc       uint64 // bytes allocated and not yet freed 分配尚未释放的
 	total_alloc uint64 // bytes allocated (even if freed) 总共分配的内存，包含已经释放的

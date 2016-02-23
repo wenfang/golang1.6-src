@@ -423,7 +423,7 @@ func schedinit() {
 		_g_.racectx = raceinit()
 	}
 
-	sched.maxmcount = 10000
+	sched.maxmcount = 10000 // 默认最大线程数10000
 
 	// Cache the framepointer experiment.  This affects stack unwinding.
 	framepointer_enabled = haveexperiment("framepointer")
@@ -4114,7 +4114,7 @@ func testSchedLocalQueueSteal() {
 }
 
 //go:linkname setMaxThreads runtime/debug.setMaxThreads
-func setMaxThreads(in int) (out int) {
+func setMaxThreads(in int) (out int) { // 设置最大线程
 	lock(&sched.lock)
 	out = int(sched.maxmcount)
 	sched.maxmcount = int32(in)

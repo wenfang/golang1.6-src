@@ -82,7 +82,7 @@ type Queryer interface { // 查询返回行集
 // Conn is assumed to be stateful.
 type Conn interface { // Conn接口，代表到数据库的一个连接
 	// Prepare returns a prepared statement, bound to this connection.
-	Prepare(query string) (Stmt, error)
+	Prepare(query string) (Stmt, error) // 返回一个prepare语句对应到连接上
 
 	// Close invalidates and potentially stops any current
 	// prepared statements and transactions, marking this
@@ -92,7 +92,7 @@ type Conn interface { // Conn接口，代表到数据库的一个连接
 	// connections and only calls Close when there's a surplus of
 	// idle connections, it shouldn't be necessary for drivers to
 	// do their own connection caching.
-	Close() error
+	Close() error // 关闭连接
 
 	// Begin starts and returns a new transaction.
 	Begin() (Tx, error) // 启动一个新事务

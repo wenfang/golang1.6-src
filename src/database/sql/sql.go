@@ -238,12 +238,12 @@ type DB struct {
 	// maybeOpenNewConnections sends on the chan (one send per needed connection)
 	// It is closed during db.Close(). The close tells the connectionOpener
 	// goroutine to exit.
-	openerCh chan struct{} // 通告要打开新连接
+	openerCh    chan struct{} // 通告要打开新连接
 	closed      bool
 	dep         map[finalCloser]depSet
 	lastPut     map[*driverConn]string // stacktrace of last conn's put; debug only
 	maxIdle     int                    // zero means defaultMaxIdleConns; negative means 0
-	maxOpen  int                    // <= 0 means unlimited 最大打开连接的数量，小于等于0表示没限制
+	maxOpen     int                    // <= 0 means unlimited 最大打开连接的数量，小于等于0表示没限制
 	maxLifetime time.Duration          // maximum amount of time a connection may be reused
 	cleanerCh   chan struct{}
 }
@@ -265,13 +265,13 @@ const (
 // interfaces returned via that Conn, such as calls on Tx, Stmt,
 // Result, Rows)
 type driverConn struct { // 代表到数据库的连接
-	db *DB // 指向数据库结构
+	db        *DB // 指向数据库结构
 	createdAt time.Time
 
-	sync.Mutex  // guards following
+	sync.Mutex                       // guards following
 	ci          driver.Conn          // 对应驱动的连接
 	closed      bool                 // 该连接是否已关闭
-	finalClosed bool // ci.Close has been called
+	finalClosed bool                 // ci.Close has been called
 	openStmt    map[driver.Stmt]bool // 对应的statement是否是已打开的statement
 
 	// guarded by db.mu
@@ -453,6 +453,7 @@ func (db *DB) removeDepLocked(x finalCloser, dep interface{}) func() error {
 	}
 }
 
+// connectionOpener请求chan的大小
 // This is the size of the connectionOpener request chan (DB.openerCh).
 // This value should be larger than the maximum typical value
 // used for db.maxOpen. If maxOpen is significantly larger than
@@ -730,11 +731,11 @@ func (db *DB) connectionOpener() { // 在单独的goroutine中执行，打开新
 }
 
 // Open one new connection
-func (db *DB) openNewConnection() {
+func (db *DB) openNewConnection() { // 打开一个新的到数据库的连接
 	// maybeOpenNewConnctions has already executed db.numOpen++ before it sent
 	// on db.openerCh. This function must execute db.numOpen-- if the
 	// connection fails or is closed before returning.
-	ci, err := db.driver.Open(db.dsn)
+	ci, err := db.driver.Open(db.dsn) // 调用driver的open函数
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	if db.closed {
@@ -750,7 +751,7 @@ func (db *DB) openNewConnection() {
 		db.maybeOpenNewConnections()
 		return
 	}
-	dc := &driverConn{
+	dc := &driverConn{ // 创建driverConn结构
 		db:        db,
 		createdAt: nowFunc(),
 		ci:        ci,
@@ -1946,7 +1947,7 @@ type Result interface { // 执行SQL语句后返回结果接口
 }
 
 type driverResult struct { // driverResult实现了Result接口
-	sync.Locker // the *driverConn
+	sync.Locker               // the *driverConn
 	resi        driver.Result // 封装了内部的driver.Result
 }
 

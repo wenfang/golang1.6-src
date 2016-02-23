@@ -198,7 +198,7 @@ func (s *mspan) sweep(preserve bool) bool {
 
 	// Mark any free objects in this span so we don't collect them.
 	sstart := uintptr(s.start << _PageShift)
-	for link := s.freelist; link.ptr() != nil; link = link.ptr().next {
+	for link := s.freelist; link.ptr() != nil; link = link.ptr().next { // mark fee
 		if uintptr(link) < sstart || s.limit <= uintptr(link) {
 			// Free list is corrupted.
 			dumpFreeList(s)

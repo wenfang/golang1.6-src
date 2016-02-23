@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// 垃圾收集器:类型和堆位图
 // Garbage collector: type and heap bitmaps.
 //
-// 栈，数据和bss位图
+// 栈，数据段和bss段位图
 // Stack, data, and bss bitmaps
 //
 // 在数据段和bss段中的栈帧和全局变量由1bit的位图描述，0表示不感兴趣，1表示活跃指针
@@ -173,8 +174,8 @@ func (h *mheap) mapBits(arena_used uintptr) {
 // The methods on heapBits take value receivers so that the compiler
 // can more easily inline calls to those methods and registerize the
 // struct fields independently.
-type heapBits struct {
-	bitp  *uint8 // bit位所在的uint8位置
+type heapBits struct { // 堆位图的位置
+	bitp  *uint8 // bit位所在的uint8位置,_arena_start后的位图
 	shift uint32 // 在4个bit上的偏移
 }
 
@@ -184,14 +185,14 @@ type heapBits struct {
 //
 // nosplit because it is used during write barriers and must not be preempted.
 //go:nosplit
-func heapBitsForAddr(addr uintptr) heapBits {
+func heapBitsForAddr(addr uintptr) heapBits { // 通过一个地址转换为heapBits结构
 	// 2 bits per work, 4 pairs per byte, and a mask is hard coded.
-	off := (addr - mheap_.arena_start) / sys.PtrSize
+	off := (addr - mheap_.arena_start) / sys.PtrSize // 获得地址对应的偏移，第几个word
 	return heapBits{(*uint8)(unsafe.Pointer(mheap_.arena_start - off/4 - 1)), uint32(off & 3)}
 }
 
 // heapBitsForSpan returns the heapBits for the span base address base.
-func heapBitsForSpan(base uintptr) (hbits heapBits) {
+func heapBitsForSpan(base uintptr) (hbits heapBits) { // base为span的基地址，返回其heapBits
 	if base < mheap_.arena_start || base >= mheap_.arena_used { // base地址不在范围之内，抛出异常
 		throw("heapBitsForSpan: base out of range")
 	}
@@ -199,7 +200,7 @@ func heapBitsForSpan(base uintptr) (hbits heapBits) {
 	if hbits.shift != 0 {         // hbits所在的偏移非0，抛出异常，没有对齐
 		throw("heapBitsForSpan: unaligned start")
 	}
-	return hbits
+	return hbits // 返回对应span基地址的heapBits
 }
 
 // heapBitsForObject返回包含地址p的堆对象的基地址
@@ -324,7 +325,7 @@ func (h heapBits) isMarked() bool { // 查看是否被marked
 
 // setMarked sets the marked bit in the heap bits, atomically.
 // h must describe the initial word of the object.
-func (h heapBits) setMarked() { // 设置heap bits的mark
+func (h heapBits) setMarked() { // 设置heap bits被mark
 	// Each byte of GC bitmap holds info for four words.
 	// Might be racing with other updates, so use atomic update always.
 	// We used to be clever here and use a non-atomic update in certain
@@ -334,7 +335,7 @@ func (h heapBits) setMarked() { // 设置heap bits的mark
 
 // setMarkedNonAtomic sets the marked bit in the heap bits, non-atomically.
 // h must describe the initial word of the object.
-func (h heapBits) setMarkedNonAtomic() {
+func (h heapBits) setMarkedNonAtomic() { // 非原子的设置heap bits被mark
 	*h.bitp |= bitMarked << h.shift
 }
 

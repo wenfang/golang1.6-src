@@ -33,11 +33,11 @@ import (
 // A Client is higher-level than a RoundTripper (such as Transport)
 // and additionally handles HTTP details such as cookies and
 // redirects.
-type Client struct {
+type Client struct { // 作为HTTP client，DefaultClient使用DefaultTransport
 	// Transport specifies the mechanism by which individual
 	// HTTP requests are made.
 	// If nil, DefaultTransport is used.
-	Transport RoundTripper
+	Transport RoundTripper // 使用的Transport如果为nil，使用DefaultTransport
 
 	// CheckRedirect specifies the policy for handling redirects.
 	// If CheckRedirect is not nil, the client calls it before

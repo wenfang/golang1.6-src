@@ -32,7 +32,7 @@ const (
 // The caller must have call gcCopySpans().
 //
 //go:nowritebarrier
-func gcMarkRootPrepare() {
+func gcMarkRootPrepare() { // 准备mark root
 	// Compute how many data and BSS root blocks there are.
 	nBlocks := func(bytes uintptr) int { // 计算有多少数据，按照256K对齐
 		return int((bytes + rootBlockBytes - 1) / rootBlockBytes)
@@ -578,12 +578,12 @@ func scanstack(gp *g) { // scan goroutine g的栈
 		return
 	}
 
-	if readgstatus(gp)&_Gscan == 0 {
+	if readgstatus(gp)&_Gscan == 0 { // 如果不是scan阶段，抛出异常
 		print("runtime:scanstack: gp=", gp, ", goid=", gp.goid, ", gp->atomicstatus=", hex(readgstatus(gp)), "\n")
 		throw("scanstack - bad status")
 	}
 
-	switch readgstatus(gp) &^ _Gscan {
+	switch readgstatus(gp) &^ _Gscan { // 隐去其他状态
 	default:
 		print("runtime: gp=", gp, ", goid=", gp.goid, ", gp->atomicstatus=", readgstatus(gp), "\n")
 		throw("mark - bad status")
@@ -599,7 +599,7 @@ func scanstack(gp *g) { // scan goroutine g的栈
 	if gp == getg() { // 不能scan自己的栈
 		throw("can't scan our own stack")
 	}
-	mp := gp.m
+	mp := gp.m                       // 获取当前的m
 	if mp != nil && mp.helpgc != 0 { // 不能scan gchelper的栈
 		throw("can't scan gchelper stack")
 	}
@@ -610,7 +610,7 @@ func scanstack(gp *g) { // scan goroutine g的栈
 	} else {
 		sp = gp.sched.sp
 	}
-	switch gcphase {
+	switch gcphase { // 根据gc阶段判断
 	case _GCmark:
 		// Install stack barriers during stack scan.
 		barrierOffset = uintptr(firstStackBarrierOffset)
@@ -977,19 +977,19 @@ func scanobject(b uintptr, gcw *gcWork) {
 	// Find bits of the beginning of the object.
 	// b must point to the beginning of a heap object, so
 	// we can get its bits and span directly.
-	hbits := heapBitsForAddr(b)
-	s := spanOfUnchecked(b)
-	n := s.elemsize // 获得该mspan中每个元素的大小
-	if n == 0 {
+	hbits := heapBitsForAddr(b) // 查找到b对应的object在堆中的标志位
+	s := spanOfUnchecked(b)     // 返回b地址所在的mspan
+	n := s.elemsize             // 获得该mspan中每个元素的大小
+	if n == 0 {                 // mspan中元素大小为0，抛出异常
 		throw("scanobject n == 0")
 	}
 
 	var i uintptr
-	for i = 0; i < n; i += sys.PtrSize {
+	for i = 0; i < n; i += sys.PtrSize { // 一个word一个word的查找
 		// Find bits for this word.
 		if i != 0 {
 			// Avoid needless hbits.next() on last iteration.
-			hbits = hbits.next()
+			hbits = hbits.next() // 返回下一个bits
 		}
 		// During checkmarking, 1-word objects store the checkmark
 		// in the type bit for the one word. The only one-word objects
@@ -1028,7 +1028,7 @@ func scanobject(b uintptr, gcw *gcWork) {
 func shade(b uintptr) {
 	if obj, hbits, span := heapBitsForObject(b, 0, 0); obj != 0 {
 		gcw := &getg().m.p.ptr().gcw
-		greyobject(obj, 0, 0, hbits, span, gcw)
+		greyobject(obj, 0, 0, hbits, span, gcw) // 将对象置灰
 		if gcphase == _GCmarktermination || gcBlackenPromptly {
 			// Ps aren't allowed to cache work during mark
 			// termination.
@@ -1043,7 +1043,7 @@ func shade(b uintptr) {
 //go:nowritebarrierrec
 func greyobject(obj, base, off uintptr, hbits heapBits, span *mspan, gcw *gcWork) {
 	// obj should be start of allocation, and so must be at least pointer-aligned.
-	if obj&(sys.PtrSize-1) != 0 {
+	if obj&(sys.PtrSize-1) != 0 { // 如果obj不是对齐的，抛出异常
 		throw("greyobject: obj not pointer-aligned")
 	}
 
@@ -1070,14 +1070,14 @@ func greyobject(obj, base, off uintptr, hbits heapBits, span *mspan, gcw *gcWork
 		}
 	} else {
 		// If marked we have nothing to do.
-		if hbits.isMarked() {
+		if hbits.isMarked() { // 如果已经被标记，直接返回
 			return
 		}
-		hbits.setMarked()
+		hbits.setMarked() // 设置被标记
 
 		// If this is a noscan object, fast-track it to black
 		// instead of greying it.
-		if !hbits.hasPointers(span.elemsize) {
+		if !hbits.hasPointers(span.elemsize) { // 如果不包含指针，返回
 			gcw.bytesMarked += uint64(span.elemsize)
 			return
 		}
@@ -1090,7 +1090,7 @@ func greyobject(obj, base, off uintptr, hbits heapBits, span *mspan, gcw *gcWork
 	// to give the PREFETCH time to do its work.
 	// Use of PREFETCHNTA might be more appropriate than PREFETCH
 
-	gcw.put(obj)
+	gcw.put(obj) // 将obj放到gcwork中
 }
 
 // gcDumpObject dumps the contents of obj for debugging and marks the

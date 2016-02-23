@@ -39,7 +39,7 @@ var DefaultTransport RoundTripper = &Transport{ // 缺省的Transport，被Defau
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
 	}).Dial,
-	TLSHandshakeTimeout:   10 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second, // TLS握手超时
 	ExpectContinueTimeout: 1 * time.Second,
 }
 
@@ -47,18 +47,18 @@ var DefaultTransport RoundTripper = &Transport{ // 缺省的Transport，被Defau
 // MaxIdleConnsPerHost.
 const DefaultMaxIdleConnsPerHost = 2
 
-// Transport是对RoundTripper的实现，支持HTTP
+// Transport是对RoundTripper的实现，支持HTTP,HTTPS和HTTP代理
 // Transport is an implementation of RoundTripper that supports HTTP,
 // HTTPS, and HTTP proxies (for either HTTP or HTTPS with CONNECT).
-//
+// 缺省情况下,Transport会cache连接以备未来使用。
 // By default, Transport caches connections for future re-use.
 // This may leave many open connections when accessing many hosts.
 // This behavior can be managed using Transport's CloseIdleConnections method
 // and the MaxIdleConnsPerHost and DisableKeepAlives fields.
-//
+// Transport应该被重用而不是按需生成,Transport是groutine safe的
 // Transports should be reused instead of created as needed.
 // Transports are safe for concurrent use by multiple goroutines.
-//
+// Transport是创建HTTP和HTTPS请求的低级原语
 // A Transport is a low-level primitive for making HTTP and HTTPS requests.
 // For high-level functionality, such as cookies and redirects, see Client.
 //
@@ -139,6 +139,7 @@ type Transport struct {
 	// This time does not include the time to send the request header.
 	ExpectContinueTimeout time.Duration
 
+	// TLSNextProto指定Transport如何切换到一个可选的协议，例如HTTP2.
 	// TLSNextProto specifies how the Transport switches to an
 	// alternate protocol (such as HTTP/2) after a TLS NPN/ALPN
 	// protocol negotiation.  If Transport dials an TLS connection
@@ -189,7 +190,7 @@ func (t *Transport) onceSetNextProtoDefaults() {
 	if err != nil {
 		log.Printf("Error enabling Transport HTTP/2 support: %v", err)
 	} else {
-		t.h2transport = t2
+		t.h2transport = t2 // enable对HTTP2的支持
 	}
 }
 
@@ -209,15 +210,15 @@ func (t *Transport) onceSetNextProtoDefaults() {
 //
 // As a special case, if req.URL.Host is "localhost" (with or without
 // a port number), then a nil URL and nil error will be returned.
-func ProxyFromEnvironment(req *Request) (*url.URL, error) {
+func ProxyFromEnvironment(req *Request) (*url.URL, error) { // 从环境变量中获得代理信息
 	var proxy string
 	if req.URL.Scheme == "https" { // 如果请求的scheme是https
-		proxy = httpsProxyEnv.Get()
+		proxy = httpsProxyEnv.Get() // 从https环境变量中获取代理值
 	}
 	if proxy == "" {
-		proxy = httpProxyEnv.Get()
+		proxy = httpProxyEnv.Get() // 从http环境变量中获取代理值
 	}
-	if proxy == "" {
+	if proxy == "" { // 没有代理信息，返回空
 		return nil, nil
 	}
 	if !useProxy(canonicalAddr(req.URL)) {
@@ -246,6 +247,7 @@ func ProxyURL(fixedURL *url.URL) func(*Request) (*url.URL, error) {
 	}
 }
 
+// transportRequest是对Request的包装，增加了可选的extra header
 // transportRequest is a wrapper around a *Request that adds
 // optional extra headers to write.
 type transportRequest struct {
@@ -253,7 +255,7 @@ type transportRequest struct {
 	extra    Header // extra headers to write, or nil
 }
 
-func (tr *transportRequest) extraHeaders() Header {
+func (tr *transportRequest) extraHeaders() Header { // 返回增加的extra header
 	if tr.extra == nil {
 		tr.extra = make(Header)
 	}
@@ -264,13 +266,13 @@ func (tr *transportRequest) extraHeaders() Header {
 //
 // For higher-level HTTP client support (such as handling of cookies
 // and redirects), see Get, Post, and the Client type.
-func (t *Transport) RoundTrip(req *Request) (*Response, error) {
+func (t *Transport) RoundTrip(req *Request) (*Response, error) { // 实现RoundTripper接口
 	t.nextProtoOnce.Do(t.onceSetNextProtoDefaults)
-	if req.URL == nil {
+	if req.URL == nil { // 空请求，直接返回
 		req.closeBody()
 		return nil, errors.New("http: nil Request.URL")
 	}
-	if req.Header == nil {
+	if req.Header == nil { // 头部为空，直接返回
 		req.closeBody()
 		return nil, errors.New("http: nil Request.Header")
 	}
@@ -287,18 +289,18 @@ func (t *Transport) RoundTrip(req *Request) (*Response, error) {
 		req.closeBody()
 		return nil, &badStringError{"unsupported protocol scheme", s}
 	}
-	if req.Method != "" && !validMethod(req.Method) {
+	if req.Method != "" && !validMethod(req.Method) { // 方法无效
 		return nil, fmt.Errorf("net/http: invalid method %q", req.Method)
 	}
-	if req.URL.Host == "" {
+	if req.URL.Host == "" { // 没有host
 		req.closeBody()
 		return nil, errors.New("http: no Host in request URL")
 	}
 
 	for {
 		// treq gets modified by roundTrip, so we need to recreate for each retry.
-		treq := &transportRequest{Request: req}
-		cm, err := t.connectMethodForRequest(treq)
+		treq := &transportRequest{Request: req}    // 将请求request封装为transportRequest
+		cm, err := t.connectMethodForRequest(treq) // 从transportReqest中获得conenctMethod
 		if err != nil {
 			req.closeBody()
 			return nil, err
@@ -308,8 +310,8 @@ func (t *Transport) RoundTrip(req *Request) (*Response, error) {
 		// host (for http or https), the http proxy, or the http proxy
 		// pre-CONNECTed to https server.  In any case, we'll be ready
 		// to send it requests.
-		pconn, err := t.getConn(req, cm)
-		if err != nil {
+		pconn, err := t.getConn(req, cm) // 获取一个连接
+		if err != nil {                  // 获取连接失败
 			t.setReqCanceler(req, nil)
 			req.closeBody()
 			return nil, err
@@ -321,7 +323,7 @@ func (t *Transport) RoundTrip(req *Request) (*Response, error) {
 			t.setReqCanceler(req, nil) // not cancelable with CancelRequest
 			resp, err = pconn.alt.RoundTrip(req)
 		} else {
-			resp, err = pconn.roundTrip(treq)
+			resp, err = pconn.roundTrip(treq) // 调用pconn的roundTrip
 		}
 		if err == nil {
 			return resp, nil
@@ -449,7 +451,7 @@ var (
 // envOnce looks up an environment variable (optionally by multiple
 // names) once. It mitigates expensive lookups on some platforms
 // (e.g. Windows).
-type envOnce struct {
+type envOnce struct { // 查找环境变量的值，只查找一次，然后缓存起来
 	names []string
 	once  sync.Once
 	val   string
@@ -461,7 +463,7 @@ func (e *envOnce) Get() string {
 }
 
 func (e *envOnce) init() { // 初始化一次获得环境变量的值放入val中
-	for _, n := range e.names {
+	for _, n := range e.names { // 查找所有names中指示的环境变量名，保存在val中
 		e.val = os.Getenv(n)
 		if e.val != "" {
 			return
@@ -475,7 +477,7 @@ func (e *envOnce) reset() { // 重置变量的值
 	e.val = ""
 }
 
-func (t *Transport) connectMethodForRequest(treq *transportRequest) (cm connectMethod, err error) {
+func (t *Transport) connectMethodForRequest(treq *transportRequest) (cm connectMethod, err error) { // 从transport request获得connectMethod
 	cm.targetScheme = treq.URL.Scheme
 	cm.targetAddr = canonicalAddr(treq.URL)
 	if t.Proxy != nil {
@@ -669,7 +671,7 @@ func (t *Transport) dial(network, addr string) (net.Conn, error) {
 // specified in the connectMethod.  This includes doing a proxy CONNECT
 // and/or setting up TLS.  If this doesn't return an error, the persistConn
 // is ready to write requests to.
-func (t *Transport) getConn(req *Request, cm connectMethod) (*persistConn, error) {
+func (t *Transport) getConn(req *Request, cm connectMethod) (*persistConn, error) { // 获取一个连接
 	if pc := t.getIdleConn(cm); pc != nil {
 		// set request canceler to some non-nil function so we
 		// can detect whether it was cleared between now and when
@@ -927,21 +929,21 @@ func useProxy(addr string) bool {
 // Note: no support to https to the proxy yet.
 //
 type connectMethod struct {
-	proxyURL     *url.URL // nil for no proxy, else full proxy URL
-	targetScheme string   // "http" or "https"
-	targetAddr   string   // Not used if proxy + http targetScheme (4th example in table)
+	proxyURL     *url.URL // nil for no proxy, else full proxy URL 没有代理的话为nil，否则为proxy的url地址
+	targetScheme string   // "http" or "https" http或https
+	targetAddr   string   // Not used if proxy + http targetScheme (4th example in table) 目标地址
 }
 
-func (cm *connectMethod) key() connectMethodKey {
+func (cm *connectMethod) key() connectMethodKey { // 返回connectMethod的key
 	proxyStr := ""
-	targetAddr := cm.targetAddr
+	targetAddr := cm.targetAddr // 获得目标地址
 	if cm.proxyURL != nil {
 		proxyStr = cm.proxyURL.String()
 		if cm.targetScheme == "http" {
 			targetAddr = ""
 		}
 	}
-	return connectMethodKey{
+	return connectMethodKey{ // 返回connectMethodKey结构
 		proxy:  proxyStr,
 		scheme: cm.targetScheme,
 		addr:   targetAddr,
@@ -949,7 +951,7 @@ func (cm *connectMethod) key() connectMethodKey {
 }
 
 // addr returns the first hop "host:port" to which we need to TCP connect.
-func (cm *connectMethod) addr() string {
+func (cm *connectMethod) addr() string { // 获取目标地址
 	if cm.proxyURL != nil {
 		return canonicalAddr(cm.proxyURL)
 	}
@@ -969,11 +971,11 @@ func (cm *connectMethod) tlsHost() string {
 // connectMethodKey is the map key version of connectMethod, with a
 // stringified proxy URL (or the empty string) instead of a pointer to
 // a URL.
-type connectMethodKey struct {
+type connectMethodKey struct { // connectMethod的key，由proxy,scheme,addr三个域构成
 	proxy, scheme, addr string
 }
 
-func (k connectMethodKey) String() string {
+func (k connectMethodKey) String() string { // 构建connectMethodKey
 	// Only used by tests.
 	return fmt.Sprintf("%s|%s|%s", k.proxy, k.scheme, k.addr)
 }

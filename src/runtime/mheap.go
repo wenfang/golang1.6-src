@@ -242,7 +242,7 @@ func spanOf(p uintptr) *mspan {
 // spanOfUnchecked is equivalent to spanOf, but the caller must ensure
 // that p points into the heap (that is, mheap_.arena_start <= p <
 // mheap_.arena_used).
-func spanOfUnchecked(p uintptr) *mspan {
+func spanOfUnchecked(p uintptr) *mspan { // 没有检查的返回mspan
 	return h_spans[(p-mheap_.arena_start)>>_PageShift]
 }
 

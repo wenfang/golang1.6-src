@@ -7,13 +7,14 @@
 
 // Garbage collector (GC).
 //
-// GC和用户线程并发执行，而且是类型精确的，允许多个GC线程并行执行。gc使用写屏障进行并发的mark和sweep。
+// GC和用户线程并发执行，是类型精确的，允许多个GC线程并行执行。gc使用写屏障进行并发的mark和sweep。
 // 这个gc算法是non-generational和non-compactiong的。
 // The GC runs concurrently with mutator threads, is type accurate (aka precise), allows multiple
 // GC thread to run in parallel. It is a concurrent mark and sweep that uses a write barrier. It is
 // non-generational and non-compacting. Allocation is done using size segregated per P allocation
 // areas to minimize fragmentation while eliminating locks in the common case.
 //
+// 算法分为几个阶段
 // The algorithm decomposes into several steps.
 // This is a high level description of the algorithm being used. For an overview of GC a good
 // place to start is Richard Jones' gchandbook.org.
@@ -40,11 +41,12 @@
 //  3. Set phase = GCmark.
 //  4. 等待所有的P确认该阶段
 //  4. Wait for all P's to acknowledge phase change.
-//  5. 在enable写屏障后，malloc仍然会分配白对象
+//  5. 在enable写屏障后，malloc仍然会分配白对象(未标记的对象)
 //  5. Now write barrier marks and enqueues black, grey, or white to white pointers.
 //       Malloc still allocates white (non-marked) objects.
 //  6. 同时gc依次遍历堆，标记可到达的对象
 //  6. Meanwhile GC transitively walks the heap marking reachable objects.
+//  7. 当GC标记完堆
 //  7. When GC finishes marking heap, it preempts P's one-by-one and
 //       retakes partial wbufs (filled by write barrier or during a stack scan of the goroutine
 //       currently scheduled on the P).
@@ -54,11 +56,15 @@
 // 10. 这时gc开始分配黑对象，因此未标记可到达的对象的数量，单调递减
 // 10. Malloc now allocates black objects, so number of unmarked reachable objects
 //        monotonically decreases.
+// 11. gc标记所有未标记仍可访问的对象
 // 11. GC preempts P's one-by-one taking partial wbufs and marks all unmarked yet
 //        reachable objects.
+// 12. 当完成一次循环，没有发现新的灰对象，所有可以标记的对象都已经被标记了
 // 12. When GC completes a full cycle over P's and discovers no new grey
 //         objects, (which means all reachable objects are marked) set phase = GCoff.
+// 13. 等待所有的P确认该阶段
 // 13. Wait for all P's to acknowledge phase change.
+// 14. malloc开始分配白对象
 // 14. Now malloc allocates white (but sweeps spans before use).
 //         Write barrier becomes nop.
 // 15. GC开始执行后台sweeping
@@ -86,6 +92,7 @@
 //     barriers. Technically this only needs write barriers for writes
 //     to stack slots, but we enable write barriers in general.
 // GCscan to GCmark
+//		 在GCmark阶段，如果work buffer没有被scan的指针了，drain掉该work buffer
 //     In GCmark, work buffers are drained until there are no more
 //     pointers to scan.
 //     No scanning of objects (making them black) can happen until all
@@ -232,6 +239,7 @@ func setGCPercent(in int32) (out int32) { // 设置gc的百分比
 	return out
 }
 
+// 垃圾收集的阶段
 // Garbage collector phase.
 // Indicates to write barrier and sychronization task to preform.
 var gcphase uint32
@@ -1684,7 +1692,7 @@ func gcMark(start_time int64) { // 运行mark阶段
 }
 
 func gcSweep(mode gcMode) {
-	if gcphase != _GCoff {
+	if gcphase != _GCoff { // gcphase阶段必须为_GCoff
 		throw("gcSweep being done but phase is not GCoff")
 	}
 	gcCopySpans()
