@@ -122,28 +122,28 @@ func unlock(l *mutex) {
 }
 
 // One-time notifications.
-func noteclear(n *note) {
-	n.key = 0
+func noteclear(n *note) { // 将note中保存的key值清0
+	n.key = 0 // key为1表明被唤醒，key为0表明sleep
 }
 
 func notewakeup(n *note) {
-	old := atomic.Xchg(key32(&n.key), 1)
-	if old != 0 {
+	old := atomic.Xchg(key32(&n.key), 1) // 交换note中的key和1
+	if old != 0 {                        // 如果已经被唤醒了，抛出异常
 		print("notewakeup - double wakeup (", old, ")\n")
 		throw("notewakeup - double wakeup")
 	}
-	futexwakeup(key32(&n.key), 1)
+	futexwakeup(key32(&n.key), 1) // 唤醒一个等待在key上的线程
 }
 
 func notesleep(n *note) {
-	gp := getg()
-	if gp != gp.m.g0 {
+	gp := getg()       // 获取当前的goroutine
+	if gp != gp.m.g0 { // 如果当前是g0，不能notesleep
 		throw("notesleep not on g0")
 	}
-	for atomic.Load(key32(&n.key)) == 0 {
-		gp.m.blocked = true
-		futexsleep(key32(&n.key), 0, -1)
-		gp.m.blocked = false
+	for atomic.Load(key32(&n.key)) == 0 { // 如果还没有被唤醒，阻塞住当前线程
+		gp.m.blocked = true              // 当前的m被阻塞住了
+		futexsleep(key32(&n.key), 0, -1) // sleep在key上
+		gp.m.blocked = false             //恢复当前m的状态
 	}
 }
 
@@ -153,18 +153,18 @@ func notesleep(n *note) {
 //go:nosplit
 //go:nowritebarrier
 func notetsleep_internal(n *note, ns int64) bool {
-	gp := getg()
+	gp := getg() // 获取当前的goroutine
 
-	if ns < 0 {
-		for atomic.Load(key32(&n.key)) == 0 {
-			gp.m.blocked = true
+	if ns < 0 { // 如果要等待的ns值小于0，ns小于0，类似于notesleep，一直等待
+		for atomic.Load(key32(&n.key)) == 0 { // 如果要获取的n.key的值为0，一直等待
+			gp.m.blocked = true // 当前的m被阻塞住了
 			futexsleep(key32(&n.key), 0, -1)
-			gp.m.blocked = false
+			gp.m.blocked = false // 当前的m解除阻塞
 		}
 		return true
 	}
 
-	if atomic.Load(key32(&n.key)) != 0 {
+	if atomic.Load(key32(&n.key)) != 0 { // 如果当前的note解除阻塞，直接返回
 		return true
 	}
 

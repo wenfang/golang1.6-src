@@ -20,12 +20,12 @@ type parfor struct {
 	nthr   uint32                // total number of threads 线程的总数量
 	thrseq uint32                // thread id sequencer // 线程id序列号
 	cnt    uint32                // iteration space [0, cnt) 迭代范围
-	wait   bool                  // if true, wait while all threads finish processing,
-	// otherwise parfor may return while other threads are still working
+	wait   bool                  // if true, wait while all threads finish processing, 如果为true那么要等到所有线程处理完成才能返回
+	// otherwise parfor may return while other threads are still working 如果为false，那么返回时可能还有一些线程未处理完
 
 	thr []parforthread // thread descriptors 线程描述slice
 
-	// stats
+	// stats 状态信息
 	nsteal     uint64
 	nstealcnt  uint64
 	nprocyield uint64
@@ -37,7 +37,7 @@ type parfor struct {
 type parforthread struct { // 对应单个线程的结构
 	// the thread's iteration space [32lsb, 32msb)
 	pos uint64 // 线程的迭代范围
-	// stats
+	// stats 状态信息
 	nsteal     uint64
 	nstealcnt  uint64
 	nprocyield uint64
@@ -57,7 +57,7 @@ func parforalloc(nthrmax uint32) *parfor {
 // threads executing n jobs.
 //
 // 当返回时，nthr个线程每个都调用parfordo(desc)来执行任务
-// 如果wait为true，在工作完成时才能返回，如果wait为false时
+// 如果wait为true，在工作完成时才能返回，如果wait为false返回时可能还有一些工作没有完成
 // On return the nthr threads are each expected to call parfordo(desc)
 // to run the operation. During those calls, for each i in [0, n), one
 // thread will be used invoke body(desc, i).

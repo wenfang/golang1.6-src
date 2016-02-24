@@ -26,17 +26,17 @@ type timer struct { // 定时器结构
 }
 
 var timers struct { // 全局唯一的timers变量
-	lock         mutex
-	gp           *g   // 执行定时器处理的goroutine
-	created      bool // 执行定时器处理的goroutine是否已被创建
-	sleeping     bool
-	rescheduling bool // 是否重新调度
+	lock         mutex // timers的锁
+	gp           *g    // 定时器goroutine
+	created      bool  // 定时器goroutine是否已被创建
+	sleeping     bool  // 定时器goroutine是否处于睡眠状态
+	rescheduling bool  // 是否重新调度，如果重新调度表明没有定时器了，可放弃当前的m
 	waitnote     note
 	t            []*timer // 定时器结构的列表
 }
 
 // nacl fake time support - time in nanoseconds since 1970
-var faketime int64
+var faketime int64 // nacl的fack时间支持
 
 // Package time APIs.
 // Godoc uses the comments in package time, not these.
@@ -61,7 +61,7 @@ func timeSleep(ns int64) { // 睡眠ns时间
 
 // startTimer adds t to the timer heap.
 //go:linkname startTimer time.startTimer
-func startTimer(t *timer) {
+func startTimer(t *timer) { // 增加一个定时器
 	if raceenabled {
 		racerelease(unsafe.Pointer(t))
 	}
@@ -71,7 +71,7 @@ func startTimer(t *timer) {
 // stopTimer removes t from the timer heap if it is there.
 // It returns true if t was removed, false if t wasn't even there.
 //go:linkname stopTimer time.stopTimer
-func stopTimer(t *timer) bool {
+func stopTimer(t *timer) bool { // 删除定时器
 	return deltimer(t)
 }
 
@@ -91,28 +91,28 @@ func addtimer(t *timer) { // 添加定时器
 // Add a timer to the heap and start or kick the timer proc.
 // If the new timer is earlier than any of the others.
 // Timers are locked.
-func addtimerLocked(t *timer) { // 在加锁之后添加定时器
+func addtimerLocked(t *timer) { // 在加锁之后添加定时结构timer
 	// when must never be negative; otherwise timerproc will overflow
 	// during its delta calculation and never expire other runtime·timers.
 	if t.when < 0 { // when不能小于0
-		t.when = 1<<63 - 1
+		t.when = 1<<63 - 1 // 小于0则设置很大的值
 	}
-	t.i = len(timers.t)
-	timers.t = append(timers.t, t) // 将t添加到timers中
-	siftupTimer(t.i)
-	if t.i == 0 {
+	t.i = len(timers.t)            // 获取定时列表长度
+	timers.t = append(timers.t, t) // 将定时结构添加到定时列表
+	siftupTimer(t.i)               // 维护定时列表的堆算法
+	if t.i == 0 {                  // 如果加入的变成了第一个
 		// siftup moved to top: new earliest deadline.
-		if timers.sleeping {
+		if timers.sleeping { // 如果定时器goroutine处于睡眠状态
 			timers.sleeping = false
-			notewakeup(&timers.waitnote)
+			notewakeup(&timers.waitnote) // 唤醒定时器goroutine
 		}
-		if timers.rescheduling {
-			timers.rescheduling = false
-			goready(timers.gp, 0)
+		if timers.rescheduling { // 如果可以重新调度
+			timers.rescheduling = false // 不能重新调度了
+			goready(timers.gp, 0)       // ready定时器goroutine
 		}
 	}
-	if !timers.created { // 如果定时器还未创建
-		timers.created = true // 设置定时器创建
+	if !timers.created { // 如果定时器goroutine还未创建
+		timers.created = true // 设置定时器goroutine创建
 		go timerproc()        // 启动定时器处理goroutine
 	}
 }
@@ -163,16 +163,16 @@ func timerproc() { // 用于处理定时器的goroutine
 				delta = -1
 				break
 			}
-			t := timers.t[0]
+			t := timers.t[0] // 取出来第一个定时器
 			delta = t.when - now
-			if delta > 0 {
+			if delta > 0 { // 如果还没到时间，跳出循环
 				break
 			}
-			if t.period > 0 {
+			if t.period > 0 { // 到时间了，需要周期执行，再创建一个
 				// leave in heap but adjust next time to fire
 				t.when += t.period * (1 + -delta/t.period)
 				siftdownTimer(0)
-			} else {
+			} else { // 到时间了不需要周期执行，删除
 				// remove from heap
 				last := len(timers.t) - 1
 				if last > 0 {
@@ -189,7 +189,7 @@ func timerproc() { // 用于处理定时器的goroutine
 			f := t.f
 			arg := t.arg
 			seq := t.seq
-			unlock(&timers.lock)
+			unlock(&timers.lock) // 先释放定时器列表锁
 			if raceenabled {
 				raceacquire(unsafe.Pointer(t))
 			}
@@ -198,15 +198,15 @@ func timerproc() { // 用于处理定时器的goroutine
 		}
 		if delta < 0 || faketime > 0 {
 			// No timers left - put goroutine to sleep. 没有timer了，将goroutine置为sleep状态
-			timers.rescheduling = true // 设置timers重新调度
-			goparkunlock(&timers.lock, "timer goroutine (idle)", traceEvGoBlock, 1)
-			continue
+			timers.rescheduling = true                                              // 设置timers重新调度
+			goparkunlock(&timers.lock, "timer goroutine (idle)", traceEvGoBlock, 1) // 等待在这里
+			continue                                                                // 切换回来了，继续循环
 		}
 		// At least one timer pending.  Sleep until then. 至少有一个待执行的timer，睡眠直到可以执行
-		timers.sleeping = true // 设置timer处于睡眠状态
-		noteclear(&timers.waitnote)
+		timers.sleeping = true      // 设置timer处于睡眠状态
+		noteclear(&timers.waitnote) // 先清空waitnote
 		unlock(&timers.lock)
-		notetsleepg(&timers.waitnote, delta)
+		notetsleepg(&timers.waitnote, delta) // 睡眠等待delta时间
 	}
 }
 
@@ -235,7 +235,7 @@ func timejump() *g {
 
 // Heap maintenance algorithms.
 
-func siftupTimer(i int) {
+func siftupTimer(i int) { // 维护定时列表的堆算法，增加一项i
 	t := timers.t
 	when := t[i].when
 	tmp := t[i]
@@ -252,7 +252,7 @@ func siftupTimer(i int) {
 	}
 }
 
-func siftdownTimer(i int) {
+func siftdownTimer(i int) { // 维护定时列表的堆算法，删除一项i
 	t := timers.t
 	n := len(t)
 	when := t[i].when

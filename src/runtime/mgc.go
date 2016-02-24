@@ -913,7 +913,7 @@ func gcStart(mode gcMode, forceTrigger bool) {
 	// the guts of a number of libraries that might be holding
 	// locks, don't attempt to start GC in non-preemptible or
 	// potentially unstable situations.
-	mp := acquirem()
+	mp := acquirem() // 获取当前的m
 	if gp := getg(); gp == mp.g0 || mp.locks > 1 || mp.preemptoff != "" {
 		releasem(mp)
 		return
@@ -1047,7 +1047,7 @@ func gcStart(mode gcMode, forceTrigger bool) {
 
 		// Concurrent mark.
 		systemstack(startTheWorldWithSema)
-		now = nanotime()
+		now = nanotime() // 获得当前的nano时间
 		work.pauseNS += now - work.pauseStart
 		work.tMark = now
 	} else {
@@ -1193,7 +1193,7 @@ func gcMarkTermination() {
 	// Start marktermination which includes enabling the write barrier.
 	atomic.Store(&gcBlackenEnabled, 0)
 	gcBlackenPromptly = false
-	setGCPhase(_GCmarktermination)
+	setGCPhase(_GCmarktermination) // 设置阶段为mark_termination
 
 	work.heap1 = memstats.heap_live
 	startTime := nanotime()
@@ -1609,7 +1609,7 @@ func gcMark(start_time int64) { // 运行mark阶段
 	}
 
 	if work.nproc > 1 {
-		notesleep(&work.alldone)
+		notesleep(&work.alldone) // 等待在alldone这个note上
 	}
 
 	// markroot is done now, so record that objects with
@@ -1761,7 +1761,7 @@ func gcCopySpans() {
 		sysFree(unsafe.Pointer(&work.spans[0]), uintptr(len(work.spans))*unsafe.Sizeof(work.spans[0]), &memstats.other_sys)
 	}
 	// Cache the current array for sweeping.
-	mheap_.gcspans = mheap_.allspans
+	mheap_.gcspans = mheap_.allspans // 保存一部分spans
 	work.spans = h_allspans
 	unlock(&mheap_.lock)
 }

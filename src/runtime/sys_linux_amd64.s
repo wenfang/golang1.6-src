@@ -291,7 +291,7 @@ TEXT runtime·madvise(SB),NOSPLIT,$0
 
 // int64 futex(int32 *uaddr, int32 op, int32 val,
 //	struct timespec *timeout, int32 *uaddr2, int32 val2);
-TEXT runtime·futex(SB),NOSPLIT,$0
+TEXT runtime·futex(SB),NOSPLIT,$0 // 对futex的系统调用
 	MOVQ	addr+0(FP), DI
 	MOVL	op+8(FP), SI
 	MOVL	val+12(FP), DX

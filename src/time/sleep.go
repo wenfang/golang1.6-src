@@ -17,7 +17,7 @@ type runtimeTimer struct { // 创建一个运行时timer结构，和runtime中�
 	i      int
 	when   int64                      // timer何时到期
 	period int64                      // 间隔多长时间，周期性
-	f      func(interface{}, uintptr) // NOTE: must not be closure
+	f      func(interface{}, uintptr) // NOTE: must not be closure 不能是闭包
 	arg    interface{}                // 到期执行函数的参数
 	seq    uintptr
 }
@@ -30,7 +30,7 @@ func when(d Duration) int64 { // 返回d时间以后对应的纳秒时间
 	if d <= 0 { // 如果d小于等于0，返回当前时间
 		return runtimeNano()
 	}
-	t := runtimeNano() + int64(d)
+	t := runtimeNano() + int64(d) // 加上要延迟的时间
 	if t < 0 {
 		t = 1<<63 - 1 // math.MaxInt64
 	}

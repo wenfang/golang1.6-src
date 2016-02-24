@@ -14,7 +14,7 @@ import (
 const (
 	debugSelect = false
 
-	// scase.kind
+	// scase.kind select case的种类
 	caseRecv = iota
 	caseSend
 	caseDefault
@@ -23,20 +23,20 @@ const (
 // Select statement header.
 // Known to compiler.
 // Changes here must also be made in src/cmd/internal/gc/select.go's selecttype.
-type hselect struct {
-	tcase     uint16   // total count of scase[]
-	ncase     uint16   // currently filled scase[]
+type hselect struct { // select语句
+	tcase     uint16   // total count of scase[] scase slice的总数量
+	ncase     uint16   // currently filled scase[] 当前占用了多少scase
 	pollorder *uint16  // case poll order
-	lockorder **hchan  // channel lock order
-	scase     [1]scase // one per case (in order of appearance)
+	lockorder **hchan  // channel lock order channel lock顺序
+	scase     [1]scase // one per case (in order of appearance) scase的slice
 }
 
 // Select case descriptor.
 // Known to compiler.
 // Changes here must also be made in src/cmd/internal/gc/select.go's selecttype.
-type scase struct {
-	elem        unsafe.Pointer // data element
-	c           *hchan         // chan
+type scase struct { // select中case的描述
+	elem        unsafe.Pointer // data element 数据元素
+	c           *hchan         // chan 对应的chan
 	pc          uintptr        // return pc
 	kind        uint16
 	so          uint16 // vararg of selected bool
@@ -57,8 +57,8 @@ func selectsize(size uintptr) uintptr { // 返回select的大小
 	return round(selsize, sys.Int64Align)
 }
 
-func newselect(sel *hselect, selsize int64, size int32) {
-	if selsize != int64(selectsize(uintptr(size))) {
+func newselect(sel *hselect, selsize int64, size int32) { // 创建一个select，可以保存size个case语句
+	if selsize != int64(selectsize(uintptr(size))) { // select大小不满足条件，抛出异常
 		print("runtime: bad select size ", selsize, ", want ", selectsize(uintptr(size)), "\n")
 		throw("bad select size")
 	}
@@ -75,26 +75,26 @@ func newselect(sel *hselect, selsize int64, size int32) {
 //go:nosplit
 func selectsend(sel *hselect, c *hchan, elem unsafe.Pointer) (selected bool) {
 	// nil cases do not compete
-	if c != nil {
+	if c != nil { // 如果具有channel
 		selectsendImpl(sel, c, getcallerpc(unsafe.Pointer(&sel)), elem, uintptr(unsafe.Pointer(&selected))-uintptr(unsafe.Pointer(&sel)))
 	}
 	return
 }
 
-// cut in half to give stack a chance to split
+// cut in half to give stack a chance to split select send的实现
 func selectsendImpl(sel *hselect, c *hchan, pc uintptr, elem unsafe.Pointer, so uintptr) {
 	i := sel.ncase
 	if i >= sel.tcase { // 大于select中可以保存的case了，抛出异常
 		throw("selectsend: too many cases")
 	}
-	sel.ncase = i + 1
+	sel.ncase = i + 1 // case的数量增加
 	cas := (*scase)(add(unsafe.Pointer(&sel.scase), uintptr(i)*unsafe.Sizeof(sel.scase[0])))
 
 	cas.pc = pc
 	cas.c = c
 	cas.so = uint16(so)
-	cas.kind = caseSend
-	cas.elem = elem
+	cas.kind = caseSend // 类型为send类型
+	cas.elem = elem     // 元素
 
 	if debugSelect {
 		print("selectsend s=", sel, " pc=", hex(cas.pc), " chan=", cas.c, " so=", cas.so, "\n")
