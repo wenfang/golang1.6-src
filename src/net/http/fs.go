@@ -33,13 +33,13 @@ import (
 // An empty Dir is treated as ".".
 type Dir string
 
-func (d Dir) Open(name string) (File, error) {
+func (d Dir) Open(name string) (File, error) { // 打开一个目录
 	if filepath.Separator != '/' && strings.IndexRune(name, filepath.Separator) >= 0 ||
-		strings.Contains(name, "\x00") {
-		return nil, errors.New("http: invalid character in file path")
+		strings.Contains(name, "\x00") { // 在文件路径中出现了无效字符
+		return nil, errors.New("http: invalid character in file path") // 返回错误
 	}
 	dir := string(d)
-	if dir == "" {
+	if dir == "" { // 如果目录为空，返回当前目录
 		dir = "."
 	}
 	f, err := os.Open(filepath.Join(dir, filepath.FromSlash(path.Clean("/"+name))))
@@ -60,7 +60,7 @@ type FileSystem interface {
 // served by the FileServer implementation.
 //
 // The methods should behave the same as those on an *os.File.
-type File interface {
+type File interface { // 文件接口
 	io.Closer
 	io.Reader
 	io.Seeker
@@ -148,7 +148,7 @@ func serveContent(w ResponseWriter, r *Request, name string, modtime time.Time, 
 	if checkLastModified(w, r, modtime) {
 		return
 	}
-	rangeReq, done := checkETag(w, r, modtime)
+	rangeReq, done := checkETag(w, r, modtime) // 检查etag
 	if done {
 		return
 	}
@@ -183,7 +183,7 @@ func serveContent(w ResponseWriter, r *Request, name string, modtime time.Time, 
 		return
 	}
 
-	// handle Content-Range header.
+	// handle Content-Range header. 处理Content-Range
 	sendSize := size
 	var sendContent io.Reader = content
 	if size >= 0 {
@@ -296,7 +296,7 @@ func checkLastModified(w ResponseWriter, r *Request, modtime time.Time) bool {
 //
 // The return value is the effective request "Range" header to use and
 // whether this request is now considered done.
-func checkETag(w ResponseWriter, r *Request, modtime time.Time) (rangeReq string, done bool) {
+func checkETag(w ResponseWriter, r *Request, modtime time.Time) (rangeReq string, done bool) { // 实现了对If-None-Match和If-Range的检查
 	etag := w.Header().get("Etag")
 	rangeReq = r.Header.get("Range")
 
@@ -351,17 +351,17 @@ func checkETag(w ResponseWriter, r *Request, modtime time.Time) (rangeReq string
 
 // name is '/'-separated, not filepath.Separator.
 func serveFile(w ResponseWriter, r *Request, fs FileSystem, name string, redirect bool) {
-	const indexPage = "/index.html"
+	const indexPage = "/index.html" // 索引页
 
 	// redirect .../index.html to .../
 	// can't use Redirect() because that would make the path absolute,
 	// which would be a problem running under StripPrefix
-	if strings.HasSuffix(r.URL.Path, indexPage) {
+	if strings.HasSuffix(r.URL.Path, indexPage) { // 如果具有前缀，本地重定向
 		localRedirect(w, r, "./")
 		return
 	}
 
-	f, err := fs.Open(name)
+	f, err := fs.Open(name) // 打开文件
 	if err != nil {
 		msg, code := toHTTPError(err)
 		Error(w, msg, code)
@@ -394,7 +394,7 @@ func serveFile(w ResponseWriter, r *Request, fs FileSystem, name string, redirec
 	}
 
 	// use contents of index.html for directory, if present
-	if d.IsDir() {
+	if d.IsDir() { // 如果是一个目录
 		index := strings.TrimSuffix(name, "/") + indexPage
 		ff, err := fs.Open(index)
 		if err == nil {
@@ -418,7 +418,7 @@ func serveFile(w ResponseWriter, r *Request, fs FileSystem, name string, redirec
 	}
 
 	// serveContent will check modification time
-	sizeFunc := func() (int64, error) { return d.Size(), nil }
+	sizeFunc := func() (int64, error) { return d.Size(), nil } // 返回文件大小
 	serveContent(w, r, d.Name(), d.ModTime(), sizeFunc, f)
 }
 
@@ -427,11 +427,11 @@ func serveFile(w ResponseWriter, r *Request, fs FileSystem, name string, redirec
 // actually return err.Error(), since msg and httpStatus are returned to users,
 // and historically Go's ServeContent always returned just "404 Not Found" for
 // all errors. We don't want to start leaking information in error messages.
-func toHTTPError(err error) (msg string, httpStatus int) {
-	if os.IsNotExist(err) {
+func toHTTPError(err error) (msg string, httpStatus int) { // 将err转换为HTTP error
+	if os.IsNotExist(err) { // 文件不存在
 		return "404 page not found", StatusNotFound
 	}
-	if os.IsPermission(err) {
+	if os.IsPermission(err) { // 访问受限
 		return "403 Forbidden", StatusForbidden
 	}
 	// Default:

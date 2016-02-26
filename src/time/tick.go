@@ -30,7 +30,7 @@ func NewTicker(d Duration) *Ticker { // 新创建一个Ticker
 	t := &Ticker{           // 创建一个Ticker
 		C: c, // 创建一个类型为Time的chan
 		r: runtimeTimer{ // 初始化runtimeTimer结构
-			when:   when(d),
+			when:   when(d),  // 何时到期
 			period: int64(d), // 周期性运行
 			f:      sendTime,
 			arg:    c,

@@ -54,7 +54,7 @@ var (
 // that the effect of the panic was isolated to the active request.
 // It recovers the panic, logs a stack trace to the server error log,
 // and hangs up the connection.
-type Handler interface {
+type Handler interface { // 响应HTTP请求的Handler
 	ServeHTTP(ResponseWriter, *Request)
 }
 
@@ -64,8 +64,8 @@ type Handler interface {
 // A ResponseWriter may not be used after the Handler.ServeHTTP method
 // has returned.
 type ResponseWriter interface {
-	// Header returns the header map that will be sent by
-	// WriteHeader. Changing the header after a call to
+	// Header returns the header map that will be sent by Header返回需要发送给client的Header
+	// WriteHeader. Changing the header after a call to 在WriteHeader调用后更改这个header无效
 	// WriteHeader (or Write) has no effect unless the modified
 	// headers were declared as trailers by setting the
 	// "Trailer" header before the call to WriteHeader (see example).

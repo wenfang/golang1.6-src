@@ -127,7 +127,7 @@ func readSetCookies(h Header) []*Cookie {
 // SetCookie adds a Set-Cookie header to the provided ResponseWriter's headers.
 // The provided cookie must have a valid Name. Invalid cookies may be
 // silently dropped.
-func SetCookie(w ResponseWriter, cookie *Cookie) {
+func SetCookie(w ResponseWriter, cookie *Cookie) { // 加入cookie
 	if v := cookie.String(); v != "" {
 		w.Header().Add("Set-Cookie", v)
 	}

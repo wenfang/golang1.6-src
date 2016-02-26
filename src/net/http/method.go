@@ -7,7 +7,7 @@ package http
 // Common HTTP methods.
 //
 // Unless otherwise noted, these are defined in RFC 7231 section 4.3.
-const (
+const ( // HTTP方法
 	MethodGet     = "GET"
 	MethodHead    = "HEAD"
 	MethodPost    = "POST"

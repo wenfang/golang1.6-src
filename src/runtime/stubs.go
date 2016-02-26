@@ -33,6 +33,9 @@ func getg() *g // 返回指向当前g的指针
 // closure will be invalidated while it is still executing.
 func mcall(fn func(*g))
 
+// systemstack在系统栈上运行fn
+// 如果systemstack从g0的栈或者信号处理的栈上调用，那么直接调用fn并返回
+// 否则的话systemstack切换当前运行栈到没个线程的栈上，然后执行fn，最后再切换回来
 // systemstack runs fn on a system stack.
 // If systemstack is called from the per-OS-thread (g0) stack, or
 // if systemstack is called from the signal handling (gsignal) stack,

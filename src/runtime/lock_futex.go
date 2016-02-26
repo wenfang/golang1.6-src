@@ -43,16 +43,16 @@ func key32(p *uintptr) *uint32 {
 }
 
 func lock(l *mutex) {
-	gp := getg()
+	gp := getg() // 获得当前的goroutine
 
-	if gp.m.locks < 0 {
+	if gp.m.locks < 0 { // 如果lock的count小于0，抛出异常
 		throw("runtime·lock: lock count")
 	}
-	gp.m.locks++
+	gp.m.locks++ // 增加锁的count
 
 	// Speculative grab for lock.
 	v := atomic.Xchg(key32(&l.key), mutex_locked)
-	if v == mutex_unlocked {
+	if v == mutex_unlocked { // 如果处于未加锁状态，直接返回
 		return
 	}
 
@@ -168,24 +168,24 @@ func notetsleep_internal(n *note, ns int64) bool {
 		return true
 	}
 
-	deadline := nanotime() + ns
+	deadline := nanotime() + ns // 获取deadline的时间点
 	for {
-		gp.m.blocked = true
-		futexsleep(key32(&n.key), 0, ns)
+		gp.m.blocked = true              // 设置m处于阻塞状态
+		futexsleep(key32(&n.key), 0, ns) // 等待ns时间
 		gp.m.blocked = false
-		if atomic.Load(key32(&n.key)) != 0 {
+		if atomic.Load(key32(&n.key)) != 0 { // 获取key的值
 			break
 		}
 		now := nanotime()
-		if now >= deadline {
+		if now >= deadline { // 如果当前的时间超过了deadline跳出循环
 			break
 		}
 		ns = deadline - now
 	}
-	return atomic.Load(key32(&n.key)) != 0
+	return atomic.Load(key32(&n.key)) != 0 // 返回是否唤醒成功
 }
 
-func notetsleep(n *note, ns int64) bool {
+func notetsleep(n *note, ns int64) bool { // 等待一段时间，返回是否唤醒成功
 	gp := getg()
 	if gp != gp.m.g0 && gp.m.preemptoff != "" {
 		throw("notetsleep not on g0")

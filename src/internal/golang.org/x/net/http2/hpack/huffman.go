@@ -41,7 +41,7 @@ func HuffmanDecodeToString(v []byte) (string, error) {
 
 // ErrInvalidHuffman is returned for errors found decoding
 // Huffman-encoded strings.
-var ErrInvalidHuffman = errors.New("hpack: invalid Huffman-encoded data")
+var ErrInvalidHuffman = errors.New("hpack: invalid Huffman-encoded data") // 无效的huffman编码数据
 
 // huffmanDecode decodes v to buf.
 // If maxLen is greater than 0, attempts to write more to buf than
@@ -101,7 +101,7 @@ func init() {
 	if len(huffmanCodes) != 256 {
 		panic("unexpected size")
 	}
-	for i, code := range huffmanCodes {
+	for i, code := range huffmanCodes { // 变量huffman编码表，加入到解码节点中
 		addDecoderNode(byte(i), code, huffmanCodeLen[i])
 	}
 }

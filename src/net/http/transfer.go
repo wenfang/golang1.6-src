@@ -27,7 +27,7 @@ type errorReader struct {
 	err error
 }
 
-func (r errorReader) Read(p []byte) (n int, err error) {
+func (r errorReader) Read(p []byte) (n int, err error) { // 一调用read就返回错误
 	return 0, r.err
 }
 
@@ -46,13 +46,13 @@ type transferWriter struct {
 	IsResponse       bool
 }
 
-func newTransferWriter(r interface{}) (t *transferWriter, err error) {
+func newTransferWriter(r interface{}) (t *transferWriter, err error) { // 创建一个transferWriter结构
 	t = &transferWriter{}
 
 	// Extract relevant fields
 	atLeastHTTP11 := false
-	switch rr := r.(type) {
-	case *Request:
+	switch rr := r.(type) { // 根据r的类型
+	case *Request: // 如果r是Request
 		if rr.ContentLength != 0 && rr.Body == nil {
 			return nil, fmt.Errorf("http: Request.ContentLength=%d with nil Body", rr.ContentLength)
 		}
@@ -71,7 +71,7 @@ func newTransferWriter(r interface{}) (t *transferWriter, err error) {
 				n, rerr := io.ReadFull(t.Body, buf[:])
 				if rerr != nil && rerr != io.EOF {
 					t.ContentLength = -1
-					t.Body = errorReader{rerr}
+					t.Body = errorReader{rerr} // 设置不能读Body，一读取就返回错误
 				} else if n == 1 {
 					// Oh, guess there is data in this Body Reader after all.
 					// The ContentLength field just wasn't set.
@@ -89,7 +89,7 @@ func newTransferWriter(r interface{}) (t *transferWriter, err error) {
 				t.TransferEncoding = []string{"chunked"}
 			}
 		}
-	case *Response:
+	case *Response: // 如果r是Response
 		t.IsResponse = true
 		if rr.Request != nil {
 			t.Method = rr.Request.Method
@@ -129,7 +129,7 @@ func newTransferWriter(r interface{}) (t *transferWriter, err error) {
 	return t, nil
 }
 
-func noBodyExpected(requestMethod string) bool {
+func noBodyExpected(requestMethod string) bool { // 如果请求方法是HEAD不期望会有Body
 	return requestMethod == "HEAD"
 }
 

@@ -245,7 +245,7 @@ TEXT runtime·systemstack_switch(SB), NOSPLIT, $0-0
 	RET
 
 // func systemstack(fn func())
-TEXT runtime·systemstack(SB), NOSPLIT, $0-8
+TEXT runtime·systemstack(SB), NOSPLIT, $0-8 // 执行systemstack函数
 	MOVQ	fn+0(FP), DI	// DI = fn
 	get_tls(CX)
 	MOVQ	g(CX), AX	// AX = g
@@ -285,12 +285,12 @@ switch:
 	MOVQ	DX, 0(BX)
 	MOVQ	BX, SP
 
-	// call target function
+	// call target function 调用目标函数
 	MOVQ	DI, DX
 	MOVQ	0(DI), DI
 	CALL	DI
 
-	// switch back to g
+	// switch back to g 栈切换回来
 	get_tls(CX)
 	MOVQ	g(CX), AX
 	MOVQ	g_m(AX), BX

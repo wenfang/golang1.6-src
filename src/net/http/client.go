@@ -55,7 +55,7 @@ type Client struct { // 作为HTTP client，DefaultClient使用DefaultTransport
 	// Jar specifies the cookie jar.
 	// If Jar is nil, cookies are not sent in requests and ignored
 	// in responses.
-	Jar CookieJar
+	Jar CookieJar // 指定cookie jar，如果jar为nil，cookie不会再request中发送，并且会忽略response中的cookie
 
 	// Timeout specifies a time limit for requests made by this
 	// Client. The timeout includes connection time, any
@@ -74,7 +74,7 @@ type Client struct { // 作为HTTP client，DefaultClient使用DefaultTransport
 	// CancelRequest method on Transport if found. New
 	// RoundTripper implementations should use Request.Cancel
 	// instead of implementing CancelRequest.
-	Timeout time.Duration
+	Timeout time.Duration // 指定客户端的超时时间，包含连接时间，重定向时间，读body体的时间
 }
 
 // DefaultClient is the default Client and is used by Get, Head, and Post.
@@ -148,7 +148,7 @@ type readClose struct {
 
 func (c *Client) send(req *Request, deadline time.Time) (*Response, error) {
 	if c.Jar != nil { // 如果具有cookie jar
-		for _, cookie := range c.Jar.Cookies(req.URL) {
+		for _, cookie := range c.Jar.Cookies(req.URL) { // 取出来cookie jar中的所有cookie
 			req.AddCookie(cookie) // 添加cookie
 		}
 	}
@@ -194,13 +194,13 @@ func (c *Client) Do(req *Request) (resp *Response, err error) {
 }
 
 func (c *Client) deadline() time.Time {
-	if c.Timeout > 0 {
-		return time.Now().Add(c.Timeout)
+	if c.Timeout > 0 { // 如果具有超时时间
+		return time.Now().Add(c.Timeout) // 返回对应超时时间的时间结构
 	}
-	return time.Time{}
+	return time.Time{} // 否则返回空的时间结构
 }
 
-func (c *Client) transport() RoundTripper {
+func (c *Client) transport() RoundTripper { // 返回client对应的transport
 	if c.Transport != nil {
 		return c.Transport
 	}
@@ -212,7 +212,7 @@ func (c *Client) transport() RoundTripper {
 func send(ireq *Request, rt RoundTripper, deadline time.Time) (*Response, error) {
 	req := ireq // req is either the original request, or a modified fork
 
-	if rt == nil {
+	if rt == nil { // 没有设定transport
 		req.closeBody()
 		return nil, errors.New("http: no Client.Transport or DefaultTransport")
 	}
@@ -229,7 +229,7 @@ func send(ireq *Request, rt RoundTripper, deadline time.Time) (*Response, error)
 
 	// forkReq forks req into a shallow clone of ireq the first
 	// time it's called.
-	forkReq := func() {
+	forkReq := func() { // 当第一次执行时创建ireq的一个副本req
 		if ireq == req {
 			req = new(Request)
 			*req = *ireq // shallow clone
@@ -240,7 +240,7 @@ func send(ireq *Request, rt RoundTripper, deadline time.Time) (*Response, error)
 	// Headers, leaving it uninitialized.  We guarantee to the
 	// Transport that this has been initialized, though.
 	if req.Header == nil { // 没有请求头部，创建请求头部
-		forkReq()
+		forkReq() // 创建请求的副本，保存在req中
 		req.Header = make(Header)
 	}
 
@@ -252,15 +252,15 @@ func send(ireq *Request, rt RoundTripper, deadline time.Time) (*Response, error)
 		req.Header.Set("Authorization", "Basic "+basicAuth(username, password))
 	}
 
-	if !deadline.IsZero() {
-		forkReq()
+	if !deadline.IsZero() { // 如果超时时间不是0
+		forkReq() // 创建请求的副本保存在req中
 	}
 	stopTimer, wasCanceled := setRequestCancel(req, rt, deadline)
 
-	resp, err := rt.RoundTrip(req)
-	if err != nil {
-		stopTimer()
-		if resp != nil {
+	resp, err := rt.RoundTrip(req) // 执行请求
+	if err != nil {                // 执行请求失败
+		stopTimer()      // 停止掉定时器
+		if resp != nil { // 返回了一个response，只能ignore了
 			log.Printf("RoundTripper returned a response & error; ignoring response")
 		}
 		if tlsErr, ok := err.(tls.RecordHeaderError); ok {
@@ -273,41 +273,41 @@ func send(ireq *Request, rt RoundTripper, deadline time.Time) (*Response, error)
 		}
 		return nil, err
 	}
-	if !deadline.IsZero() {
+	if !deadline.IsZero() { // 执行请求成功
 		resp.Body = &cancelTimerBody{
 			stop:           stopTimer,
-			rc:             resp.Body,
-			reqWasCanceled: wasCanceled,
+			rc:             resp.Body,   // 将resp的Body体进行封装
+			reqWasCanceled: wasCanceled, // 请求是否被cancel了
 		}
 	}
 	return resp, nil // 返回响应
 }
 
-// setRequestCancel sets the Cancel field of req, if deadline is
+// setRequestCancel sets the Cancel field of req, if deadline is 设置请求的cancel域
 // non-zero. The RoundTripper's type is used to determine whether the legacy
 // CancelRequest behavior should be used.
-func setRequestCancel(req *Request, rt RoundTripper, deadline time.Time) (stopTimer func(), wasCanceled func() bool) {
+func setRequestCancel(req *Request, rt RoundTripper, deadline time.Time) (stopTimer func(), wasCanceled func() bool) { // 返回stopTimer和wasCanceled两个函数
 	if deadline.IsZero() {
 		return nop, alwaysFalse
 	}
 
 	initialReqCancel := req.Cancel // the user's original Request.Cancel, if any
 
-	cancel := make(chan struct{})
+	cancel := make(chan struct{}) // 创建cancel chan
 	req.Cancel = cancel
 
-	wasCanceled = func() bool {
+	wasCanceled = func() bool { // 检查请求是否被cancel
 		select {
-		case <-cancel:
+		case <-cancel: // 如果被cancel了，返回true
 			return true
-		default:
+		default: // 否则返回false
 			return false
 		}
 	}
 
-	doCancel := func() {
+	doCancel := func() { // 执行cancel
 		// The new way:
-		close(cancel)
+		close(cancel) // 关闭cancel channel
 
 		// The legacy compatibility way, used only
 		// for RoundTripper implementations written
@@ -315,7 +315,7 @@ func setRequestCancel(req *Request, rt RoundTripper, deadline time.Time) (stopTi
 		type canceler interface {
 			CancelRequest(*Request)
 		}
-		switch v := rt.(type) {
+		switch v := rt.(type) { // 根据请求类型
 		case *Transport, *http2Transport:
 			// Do nothing. The net/http package's transports
 			// support the new Request.Cancel channel
@@ -326,16 +326,16 @@ func setRequestCancel(req *Request, rt RoundTripper, deadline time.Time) (stopTi
 
 	stopTimerCh := make(chan struct{})
 	var once sync.Once
-	stopTimer = func() { once.Do(func() { close(stopTimerCh) }) }
+	stopTimer = func() { once.Do(func() { close(stopTimerCh) }) } // 执行stopTimer，停止掉超时定时器
 
 	timer := time.NewTimer(deadline.Sub(time.Now()))
-	go func() {
+	go func() { // 创建定时器
 		select {
-		case <-initialReqCancel:
+		case <-initialReqCancel: // 如果request原始的cancel执行了
 			doCancel()
-		case <-timer.C:
+		case <-timer.C: // 定时器超时执行doCancel
 			doCancel()
-		case <-stopTimerCh:
+		case <-stopTimerCh: // stopTimer超时，停止定时器
 			timer.Stop()
 		}
 	}()
@@ -427,23 +427,23 @@ func alwaysFalse() bool { return false }
 func (c *Client) doFollowingRedirects(ireq *Request, shouldRedirect func(int) bool) (resp *Response, err error) {
 	var base *url.URL
 	redirectChecker := c.CheckRedirect
-	if redirectChecker == nil {
+	if redirectChecker == nil { // 如果没有设定重定向检查，设定缺省的重定向检查
 		redirectChecker = defaultCheckRedirect
 	}
 	var via []*Request
 
-	if ireq.URL == nil {
+	if ireq.URL == nil { // 请求的url为空，返回错误
 		ireq.closeBody()
 		return nil, errors.New("http: nil Request.URL")
 	}
 
 	req := ireq
-	deadline := c.deadline()
+	deadline := c.deadline() // 返回该client的超时时间
 
 	urlStr := "" // next relative or absolute URL to fetch (after first request)
 	redirectFailed := false
 	for redirect := 0; ; redirect++ {
-		if redirect != 0 {
+		if redirect != 0 { // 不是第一次重定向了
 			nreq := new(Request)
 			nreq.Cancel = ireq.Cancel
 			nreq.Method = ireq.Method
@@ -482,7 +482,7 @@ func (c *Client) doFollowingRedirects(ireq *Request, shouldRedirect func(int) bo
 			break
 		}
 
-		if shouldRedirect(resp.StatusCode) {
+		if shouldRedirect(resp.StatusCode) { // 根据状态码，是否需要重定向
 			// Read the body if small so underlying TCP connection will be re-used.
 			// No need to check for errors: if it fails, Transport won't reuse it anyway.
 			const maxBodySlurpSize = 2 << 10
@@ -595,7 +595,7 @@ func (c *Client) PostForm(url string, data url.Values) (resp *Response, err erro
 //    307 (Temporary Redirect)
 //
 // Head is a wrapper around DefaultClient.Head
-func Head(url string) (resp *Response, err error) {
+func Head(url string) (resp *Response, err error) { // 执行Head
 	return DefaultClient.Head(url)
 }
 
@@ -615,8 +615,8 @@ func (c *Client) Head(url string) (resp *Response, err error) {
 	return c.doFollowingRedirects(req, shouldRedirectGet)
 }
 
-// cancelTimerBody is an io.ReadCloser that wraps rc with two features:
-// 1) on Read error or close, the stop func is called.
+// cancelTimerBody is an io.ReadCloser that wraps rc with two features: cancelTimerBody是一个io.ReadCloser
+// 1) on Read error or close, the stop func is called. 当读错误或关闭时执行stop函数
 // 2) On Read failure, if reqWasCanceled is true, the error is wrapped and
 //    marked as net.Error that hit its timeout.
 type cancelTimerBody struct {
@@ -626,15 +626,15 @@ type cancelTimerBody struct {
 }
 
 func (b *cancelTimerBody) Read(p []byte) (n int, err error) {
-	n, err = b.rc.Read(p)
-	if err == nil {
+	n, err = b.rc.Read(p) // 从rc中读取数据
+	if err == nil {       // 读取数据成功返回
 		return n, nil
 	}
-	b.stop()
-	if err == io.EOF {
+	b.stop()           // 读取数据失败，执行stop
+	if err == io.EOF { // 如果正常到达了文件结尾，返回读取的数量
 		return n, err
 	}
-	if b.reqWasCanceled() {
+	if b.reqWasCanceled() { // 如果是由于超时没有读完，返回错误
 		err = &httpError{
 			err:     err.Error() + " (Client.Timeout exceeded while reading body)",
 			timeout: true,
@@ -643,7 +643,7 @@ func (b *cancelTimerBody) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (b *cancelTimerBody) Close() error {
+func (b *cancelTimerBody) Close() error { // 关闭请求
 	err := b.rc.Close()
 	b.stop()
 	return err

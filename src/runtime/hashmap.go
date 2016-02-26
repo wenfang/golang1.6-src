@@ -4,7 +4,7 @@
 
 package runtime
 
-// This file contains the implementation of Go's map type.
+// This file contains the implementation of Go's map type. 对go的map的实现
 //
 // A map is just a hash table.  The data is arranged
 // into an array of buckets.  Each bucket contains up to

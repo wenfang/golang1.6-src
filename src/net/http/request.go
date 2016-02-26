@@ -65,6 +65,7 @@ var reqWriteExcludeHeader = map[string]bool{
 	"Trailer":           true,
 }
 
+// Request代表server收到的或者client发出的HTTP请求
 // A Request represents an HTTP request received by a server
 // or to be sent by a client.
 //
@@ -88,7 +89,7 @@ type Request struct {
 	// connect to, while the Request's Host field optionally
 	// specifies the Host header value to send in the HTTP
 	// request.
-	URL *url.URL
+	URL *url.URL // 请求的URL
 
 	// The protocol version for incoming server requests.
 	//
@@ -263,7 +264,7 @@ func (r *Request) UserAgent() string { // 返回请求的头部User-Agent域
 }
 
 // Cookies parses and returns the HTTP cookies sent with the request.
-func (r *Request) Cookies() []*Cookie {
+func (r *Request) Cookies() []*Cookie { // 返回请求的所有Cookies
 	return readCookies(r.Header, "")
 }
 
@@ -272,7 +273,7 @@ var ErrNoCookie = errors.New("http: named cookie not present")
 
 // Cookie returns the named cookie provided in the request or
 // ErrNoCookie if not found.
-func (r *Request) Cookie(name string) (*Cookie, error) {
+func (r *Request) Cookie(name string) (*Cookie, error) { // 返回名字为name的cookie
 	for _, c := range readCookies(r.Header, name) {
 		return c, nil
 	}
@@ -283,7 +284,7 @@ func (r *Request) Cookie(name string) (*Cookie, error) {
 // AddCookie does not attach more than one Cookie header field.  That
 // means all cookies, if any, are written into the same line,
 // separated by semicolon.
-func (r *Request) AddCookie(c *Cookie) {
+func (r *Request) AddCookie(c *Cookie) { // 向请求中添加cookie
 	s := fmt.Sprintf("%s=%s", sanitizeCookieName(c.Name), sanitizeCookieValue(c.Value))
 	if c := r.Header.Get("Cookie"); c != "" {
 		r.Header.Set("Cookie", c+"; "+s)
@@ -370,7 +371,7 @@ const defaultUserAgent = "Go-http-client/1.1"
 // If Body is present, Content-Length is <= 0 and TransferEncoding
 // hasn't been set to "identity", Write adds "Transfer-Encoding:
 // chunked" to the header. Body is closed after it is sent.
-func (r *Request) Write(w io.Writer) error {
+func (r *Request) Write(w io.Writer) error { // 将请求写到w中
 	return r.write(w, false, nil, nil)
 }
 
@@ -390,15 +391,15 @@ var errMissingHost = errors.New("http: Request.Write on Request with no Host or 
 
 // extraHeaders may be nil
 // waitForContinue may be nil
-func (req *Request) write(w io.Writer, usingProxy bool, extraHeaders Header, waitForContinue func() bool) error {
+func (req *Request) write(w io.Writer, usingProxy bool, extraHeaders Header, waitForContinue func() bool) error { // 写出请求内容
 	// Find the target host. Prefer the Host: header, but if that
 	// is not given, use the host from the request URL.
 	//
 	// Clean the host, in case it arrives with unexpected stuff in it.
-	host := cleanHost(req.Host)
+	host := cleanHost(req.Host) // 获得主机名
 	if host == "" {
-		if req.URL == nil {
-			return errMissingHost
+		if req.URL == nil { // 主机为空，同事请求的url也为空
+			return errMissingHost // 没有设置请求主机
 		}
 		host = cleanHost(req.URL.Host)
 	}
@@ -514,7 +515,7 @@ func (req *Request) write(w io.Writer, usingProxy bool, extraHeaders Header, wai
 // issue 11206, where a malformed Host header used in the proxy context
 // would create a bad request. So it is enough to just truncate at the
 // first offending character.
-func cleanHost(in string) string {
+func cleanHost(in string) string { // 清空/或者空格后的内容
 	if i := strings.IndexAny(in, " /"); i != -1 {
 		return in[:i]
 	}

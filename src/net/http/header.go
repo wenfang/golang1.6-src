@@ -16,11 +16,11 @@ import (
 var raceEnabled = false // set by race.go
 
 // A Header represents the key-value pairs in an HTTP header.
-type Header map[string][]string
+type Header map[string][]string // Header结构就是一个map
 
 // Add adds the key, value pair to the header.
 // It appends to any existing values associated with key.
-func (h Header) Add(key, value string) {
+func (h Header) Add(key, value string) { // 加入一个header
 	textproto.MIMEHeader(h).Add(key, value)
 }
 
@@ -53,11 +53,11 @@ func (h Header) Del(key string) {
 }
 
 // Write writes a header in wire format.
-func (h Header) Write(w io.Writer) error {
+func (h Header) Write(w io.Writer) error { // 将Header写出到w中
 	return h.WriteSubset(w, nil)
 }
 
-func (h Header) clone() Header {
+func (h Header) clone() Header { // clone出来一份Header
 	h2 := make(Header, len(h))
 	for k, vv := range h {
 		vv2 := make([]string, len(vv))
@@ -142,7 +142,7 @@ func (h Header) sortedKeyValues(exclude map[string]bool) (kvs []keyValues, hs *h
 
 // WriteSubset writes a header in wire format.
 // If exclude is not nil, keys where exclude[key] == true are not written.
-func (h Header) WriteSubset(w io.Writer, exclude map[string]bool) error {
+func (h Header) WriteSubset(w io.Writer, exclude map[string]bool) error { // 写出一个子集
 	ws, ok := w.(writeStringer) // 将w变为writeStringer
 	if !ok {
 		ws = stringWriter{w} // 转换为WriteStringer接口

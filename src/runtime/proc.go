@@ -17,8 +17,8 @@ var buildVersion = sys.TheVersion
 //
 // The main concepts are:
 // G - goroutine.
-// M - worker thread, or machine.
-// P - processor, a resource that is required to execute Go code.
+// M - worker thread, or machine. 工作线程
+// P - processor, a resource that is required to execute Go code. 为执行Go代码而需要的资源
 //     M must have an associated P to execute Go code, however it can be
 //     blocked or in a syscall w/o an associated P.
 //
@@ -112,7 +112,7 @@ func main() { // 主goroutine
 	// Max stack size is 1 GB on 64-bit, 250 MB on 32-bit.
 	// Using decimal instead of binary GB and MB because
 	// they look nicer in the stack overflow failure message.
-	if sys.PtrSize == 8 {
+	if sys.PtrSize == 8 { // 64位系统下，最大栈大小为1G
 		maxstacksize = 1000000000
 	} else { // 在32位系统下，最大栈大小为250M
 		maxstacksize = 250000000
@@ -122,7 +122,7 @@ func main() { // 主goroutine
 	runtimeInitTime = nanotime() // 记录下来启动时间
 
 	systemstack(func() {
-		newm(sysmon, nil) // 在系统栈上执行newm函数
+		newm(sysmon, nil) // 在系统栈上执行newm函数，创建sysmon线程
 	})
 
 	// Lock the main goroutine onto this, the main OS thread,
@@ -3448,14 +3448,14 @@ func sysmon() {
 		scavengelimit = 20 * 1e6
 	}
 
-	lastscavenge := nanotime()
+	lastscavenge := nanotime() // 获取当前时间为lastscavenge时间
 	nscavenge := 0
 
 	lasttrace := int64(0)
-	idle := 0 // how many cycles in succession we had not wokeup somebody
+	idle := 0 // how many cycles in succession we had not wokeup somebody 有多少次cycle没有wokeup成功了
 	delay := uint32(0)
 	for {
-		if idle == 0 { // start with 20us sleep...
+		if idle == 0 { // start with 20us sleep... 起始睡眠20us
 			delay = 20
 		} else if idle > 50 { // start doubling the sleep after 1ms...
 			delay *= 2

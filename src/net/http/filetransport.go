@@ -10,7 +10,7 @@ import (
 )
 
 // fileTransport implements RoundTripper for the 'file' protocol.
-type fileTransport struct {
+type fileTransport struct { // 实现了file协议的RoundTripper
 	fh fileHandler
 }
 

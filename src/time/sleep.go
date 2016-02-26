@@ -125,6 +125,6 @@ func AfterFunc(d Duration, f func()) *Timer { // 到时间后执行函数f
 	return t
 }
 
-func goFunc(arg interface{}, seq uintptr) {
+func goFunc(arg interface{}, seq uintptr) { // 到期后执行函数
 	go arg.(func())()
 }

@@ -74,9 +74,9 @@ type Jar struct {
 
 // New returns a new cookie jar. A nil *Options is equivalent to a zero
 // Options.
-func New(o *Options) (*Jar, error) {
+func New(o *Options) (*Jar, error) { // 返回一个新的cookie jar
 	jar := &Jar{
-		entries: make(map[string]map[string]entry),
+		entries: make(map[string]map[string]entry), // 创建entries
 	}
 	if o != nil {
 		jar.psList = o.PublicSuffixList
@@ -88,7 +88,7 @@ func New(o *Options) (*Jar, error) {
 //
 // This struct type is not used outside of this package per se, but the exported
 // fields are those of RFC 6265.
-type entry struct {
+type entry struct { // entry是cookie的内部表示
 	Name       string
 	Value      string
 	Domain     string
@@ -104,7 +104,7 @@ type entry struct {
 	// seqNum is a sequence number so that Cookies returns cookies in a
 	// deterministic order, even for cookies that have equal Path length and
 	// equal Creation time. This simplifies testing.
-	seqNum uint64
+	seqNum uint64 // 出现的顺序号
 }
 
 // Id returns the domain;path;name triple of e as an id.
