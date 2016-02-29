@@ -15,7 +15,7 @@ type slice struct {
 }
 
 // TODO: take uintptrs instead of int64s?
-func makeslice(t *slicetype, len64, cap64 int64) slice {
+func makeslice(t *slicetype, len64, cap64 int64) slice { // 创建slice
 	// NOTE: The len > MaxMem/elemsize check here is not strictly necessary,
 	// but it produces a 'len out of range' error instead of a 'cap out of range' error
 	// when someone does make([]T, bignumber). 'cap out of range' is true too,

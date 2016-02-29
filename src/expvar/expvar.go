@@ -322,7 +322,7 @@ func cmdline() interface{} { // 返回命令行参数
 
 func memstats() interface{} { // 返回MemStats结构，会被Func转换为字符串
 	stats := new(runtime.MemStats)
-	runtime.ReadMemStats(stats)
+	runtime.ReadMemStats(stats) // 读取内存使用状态
 	return *stats
 }
 

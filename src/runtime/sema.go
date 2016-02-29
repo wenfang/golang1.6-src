@@ -35,7 +35,7 @@ type semaRoot struct { // 异步信号量结构，等待在一个地址上的gor
 }
 
 // Prime to not correlate with any user patterns.
-const semTabSize = 251
+const semTabSize = 251 // sema table的大小
 
 var semtable [semTabSize]struct { // 一个251项的结构数组，包含semaRoot结构变量
 	root semaRoot // 总共有251个semaRoot
@@ -80,18 +80,18 @@ func semacquire(addr *uint32, profile bool) { // profile表明是否进行性能
 	//	enqueue itself as a waiter
 	//	sleep
 	//	(waiter descriptor is dequeued by signaler)
-	s := acquireSudog()   // 获取一个Sudog结构
-	root := semroot(addr) // 根据地址获取对应的semroot结构
-	t0 := int64(0)        // 设置t0初值为0
-	s.releasetime = 0     // 设置释放时间
-	if profile && blockprofilerate > 0 {
+	s := acquireSudog()                  // 获取一个Sudog结构
+	root := semroot(addr)                // 根据地址获取对应的semroot结构
+	t0 := int64(0)                       // 设置t0初值为0
+	s.releasetime = 0                    // 设置释放时间
+	if profile && blockprofilerate > 0 { // 如果需要进行profile
 		t0 = cputicks()
 		s.releasetime = -1
 	}
 	for { // 循环进行加锁
 		lock(&root.lock) // 对获取的semaroot进行加锁
 		// Add ourselves to nwait to disable "easy case" in semrelease.
-		atomic.Xadd(&root.nwait, 1)
+		atomic.Xadd(&root.nwait, 1) // 等待者的数量增加
 		// Check cansemacquire to avoid missed wakeup.
 		if cansemacquire(addr) {
 			atomic.Xadd(&root.nwait, -1)
@@ -100,8 +100,8 @@ func semacquire(addr *uint32, profile bool) { // profile表明是否进行性能
 		}
 		// Any semrelease after the cansemacquire knows we're waiting
 		// (we set nwait above), so go to sleep.
-		root.queue(addr, s) // 加入addr加入到队列s中
-		goparkunlock(&root.lock, "semacquire", traceEvGoBlockSync, 4)
+		root.queue(addr, s)                                           // 加入addr加入到队列s中
+		goparkunlock(&root.lock, "semacquire", traceEvGoBlockSync, 4) // 等待在这里
 		if cansemacquire(addr) {
 			break
 		}
@@ -149,7 +149,7 @@ func semrelease(addr *uint32) {
 }
 
 func semroot(addr *uint32) *semaRoot { // 返回对应addr的semaRoot结构
-	return &semtable[(uintptr(unsafe.Pointer(addr))>>3)%semTabSize].root
+	return &semtable[(uintptr(unsafe.Pointer(addr))>>3)%semTabSize].root // 获取semaRoot结构
 }
 
 func cansemacquire(addr *uint32) bool { // 获取addr位置的资源,addr位置为一个值，当为0时表明资源已被获得

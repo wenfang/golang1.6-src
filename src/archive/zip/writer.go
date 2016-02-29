@@ -17,7 +17,7 @@ import (
 
 // Writer implements a zip file writer.
 type Writer struct {
-	cw     *countWriter // 内部封装的countWriter
+	cw          *countWriter // 内部封装的countWriter
 	dir         []*header
 	last        *fileWriter
 	closed      bool

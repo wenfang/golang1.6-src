@@ -12,20 +12,20 @@ import (
 )
 
 func init() {
-	sysStat = statUnix // 初始化将sysStat赋值为statUnix
+	sysStat = statUnix // 鍒濆鍖栧皢sysStat璧嬪�间负statUnix
 }
 
 func statUnix(fi os.FileInfo, h *Header) error {
-	sys, ok := fi.Sys().(*syscall.Stat_t) // 获得Stat_t结构
+	sys, ok := fi.Sys().(*syscall.Stat_t) // 鑾峰緱Stat_t缁撴瀯
 	if !ok {
 		return nil
 	}
-	h.Uid = int(sys.Uid) // 获得Uid
-	h.Gid = int(sys.Gid) // 获得Gid
+	h.Uid = int(sys.Uid) // 鑾峰緱Uid
+	h.Gid = int(sys.Gid) // 鑾峰緱Gid
 	// TODO(bradfitz): populate username & group.  os/user
 	// doesn't cache LookupId lookups, and lacks group
 	// lookup functions.
-	h.AccessTime = statAtime(sys) // 获得访问时间
+	h.AccessTime = statAtime(sys) // 鑾峰緱璁块棶鏃堕棿
 	h.ChangeTime = statCtime(sys)
 	// TODO(bradfitz): major/minor device numbers?
 	return nil
