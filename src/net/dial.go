@@ -220,7 +220,7 @@ func (d *Dialer) Dial(network, address string) (Conn, error) { // 连接到指�
 		return nil, &OpError{Op: "dial", Net: network, Source: nil, Addr: nil, Err: err}
 	}
 
-	ctx := &dialContext{
+	ctx := &dialContext{ // 创建一个dial的上下文
 		Dialer:        *d,
 		network:       network,
 		address:       address,
@@ -243,7 +243,7 @@ func (d *Dialer) Dial(network, address string) (Conn, error) { // 连接到指�
 		c, err = dialParallel(ctx, primaries, fallbacks)
 	}
 
-	if d.KeepAlive > 0 && err == nil {
+	if d.KeepAlive > 0 && err == nil { // 如果具有KeepAlive
 		if tc, ok := c.(*TCPConn); ok {
 			setKeepAlive(tc.fd, true)
 			setKeepAlivePeriod(tc.fd, d.KeepAlive)
@@ -397,7 +397,7 @@ func dialSingle(ctx *dialContext, ra Addr, deadline time.Time) (c Conn, err erro
 // instead of just the interface with the given host address.
 // See Dial for more details about address syntax.
 func Listen(net, laddr string) (Listener, error) { // 在一个地址上监听，返回Listener接口
-	addrs, err := resolveAddrList("listen", net, laddr, noDeadline)
+	addrs, err := resolveAddrList("listen", net, laddr, noDeadline) // 解析地址列表
 	if err != nil {
 		return nil, &OpError{Op: "listen", Net: net, Source: nil, Addr: nil, Err: err}
 	}

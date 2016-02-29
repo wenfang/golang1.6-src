@@ -365,8 +365,8 @@ type hostLookupOrder int
 const (
 	// hostLookupCgo means defer to cgo.
 	hostLookupCgo      hostLookupOrder = iota
-	hostLookupFilesDNS                 // files first
-	hostLookupDNSFiles                 // dns first
+	hostLookupFilesDNS                 // files first 先查找文件
+	hostLookupDNSFiles                 // dns first 先查找DNS
 	hostLookupFiles                    // only files
 	hostLookupDNS                      // only DNS
 )
@@ -399,7 +399,7 @@ func goLookupHost(name string) (addrs []string, err error) {
 func goLookupHostOrder(name string, order hostLookupOrder) (addrs []string, err error) {
 	if order == hostLookupFilesDNS || order == hostLookupFiles {
 		// Use entries from /etc/hosts if they match.
-		addrs = lookupStaticHost(name)
+		addrs = lookupStaticHost(name) // 查找静态hosts文件
 		if len(addrs) > 0 || order == hostLookupFiles {
 			return
 		}
@@ -444,7 +444,7 @@ func goLookupIPOrder(name string, order hostLookupOrder) (addrs []IPAddr, err er
 	if !isDomainName(name) {
 		return nil, &DNSError{Err: "invalid domain name", Name: name}
 	}
-	resolvConf.tryUpdate("/etc/resolv.conf")
+	resolvConf.tryUpdate("/etc/resolv.conf") // 尝试解析resolv.conf
 	resolvConf.mu.RLock()
 	conf := resolvConf.dnsConfig
 	resolvConf.mu.RUnlock()

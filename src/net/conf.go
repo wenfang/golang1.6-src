@@ -42,7 +42,7 @@ func systemConf() *conf {
 	return confVal
 }
 
-func initConfVal() {
+func initConfVal() { // 初始化配置的值
 	dnsMode, debugLevel := goDebugNetDNS()
 	confVal.dnsDebugLevel = debugLevel
 	confVal.netGo = netGo || dnsMode == "go"

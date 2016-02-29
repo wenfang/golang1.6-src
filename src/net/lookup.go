@@ -38,10 +38,10 @@ func LookupHost(host string) (addrs []string, err error) { // 进行主机查找
 
 // LookupIP looks up host using the local resolver.
 // It returns an array of that host's IPv4 and IPv6 addresses.
-func LookupIP(host string) (ips []IP, err error) {
+func LookupIP(host string) (ips []IP, err error) { // 查找主机名，返回IP地址，使用本地解析器
 	// Make sure that no matter what we do later, host=="" is rejected.
 	// ParseIP, for example, does accept empty strings.
-	if host == "" {
+	if host == "" { // 主机名为空，返回错误
 		return nil, &DNSError{Err: errNoSuchHost.Error(), Name: host}
 	}
 	if ip := ParseIP(host); ip != nil {
@@ -87,7 +87,7 @@ func lookupIPReturn(addrsi interface{}, err error, shared bool) ([]IPAddr, error
 
 // lookupIPDeadline looks up a hostname with a deadline.
 func lookupIPDeadline(host string, deadline time.Time) (addrs []IPAddr, err error) {
-	if deadline.IsZero() {
+	if deadline.IsZero() { // 如果没有deadline，直接调用lookupIPMerge
 		return lookupIPMerge(host)
 	}
 

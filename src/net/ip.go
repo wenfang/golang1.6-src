@@ -638,9 +638,9 @@ func parseIPv6(s string, zoneAllowed bool) (ip IP, zone string) { // 将字符�
 func ParseIP(s string) IP { // 将一个字符串解析为ip地址，返回解析后的ip地址
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
-		case '.':
+		case '.': // 如果是ipv4地址
 			return parseIPv4(s)
-		case ':':
+		case ':': // 如果是ipv6地址
 			ip, _ := parseIPv6(s, false)
 			return ip
 		}

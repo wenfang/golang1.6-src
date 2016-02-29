@@ -255,7 +255,7 @@ type Getter interface {
 type ErrorHandling int
 
 // These constants cause FlagSet.Parse to behave as described if the parse fails.
-const (
+const ( // 错误处理设置
 	ContinueOnError ErrorHandling = iota // Return a descriptive error.
 	ExitOnError                          // Call os.Exit(2).
 	PanicOnError                         // Call panic with a descriptive error.
@@ -917,7 +917,7 @@ func (f *FlagSet) Parse(arguments []string) error { // 解析参数
 }
 
 // Parsed reports whether f.Parse has been called.
-func (f *FlagSet) Parsed() bool {
+func (f *FlagSet) Parsed() bool { // FlagSet是否已被解析
 	return f.parsed
 }
 
@@ -942,8 +942,8 @@ var CommandLine = NewFlagSet(os.Args[0], ExitOnError) // 默认的操作命令�
 // error handling property.
 func NewFlagSet(name string, errorHandling ErrorHandling) *FlagSet { // 新建FlagSet结构
 	f := &FlagSet{
-		name:          name,
-		errorHandling: errorHandling,
+		name:          name,          // 名称
+		errorHandling: errorHandling, // 错误处理
 	}
 	return f
 }
@@ -951,7 +951,7 @@ func NewFlagSet(name string, errorHandling ErrorHandling) *FlagSet { // 新建Fl
 // Init sets the name and error handling property for a flag set.
 // By default, the zero FlagSet uses an empty name and the
 // ContinueOnError error handling policy.
-func (f *FlagSet) Init(name string, errorHandling ErrorHandling) {
+func (f *FlagSet) Init(name string, errorHandling ErrorHandling) { // 初始化FlagSet
 	f.name = name
 	f.errorHandling = errorHandling
 }

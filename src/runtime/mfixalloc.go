@@ -22,8 +22,8 @@ import "unsafe"
 type fixalloc struct { // fixalloc结构
 	size   uintptr                     //  用来分配多大的对象
 	first  func(arg, p unsafe.Pointer) // called first time p is returned
-	arg    unsafe.Pointer
-	list   *mlink // 当前结构的连接列表
+	arg    unsafe.Pointer              // first调用参数
+	list   *mlink                      // 当前结构的连接列表
 	chunk  unsafe.Pointer
 	nchunk uint32
 	inuse  uintptr // in-use bytes now 当前由该fixalloc分配的处于使用状态的字节数
@@ -37,7 +37,7 @@ type fixalloc struct { // fixalloc结构
 // this can not be used by some of the internal GC structures. For example when
 // the sweeper is placing an unmarked object on the free list it does not want the
 // write barrier to be called since that could result in the object being reachable.
-type mlink struct {
+type mlink struct { // mlink连接结构
 	next *mlink
 }
 
@@ -45,8 +45,8 @@ type mlink struct {
 // Initialize f to allocate objects of the given size,
 // using the allocator to obtain chunks of memory.
 func (f *fixalloc) init(size uintptr, first func(arg, p unsafe.Pointer), arg unsafe.Pointer, stat *uint64) {
-	f.size = size // 用来分配多大的对象
-	f.first = first
+	f.size = size   // 用来分配多大的对象
+	f.first = first // first函数
 	f.arg = arg
 	f.list = nil
 	f.chunk = nil
@@ -82,9 +82,9 @@ func (f *fixalloc) alloc() unsafe.Pointer {
 	return v
 }
 
-func (f *fixalloc) free(p unsafe.Pointer) {
-	f.inuse -= f.size
-	v := (*mlink)(p)
+func (f *fixalloc) free(p unsafe.Pointer) { // 释放p指向的地址，加入列表中
+	f.inuse -= f.size // 已用空间减少
+	v := (*mlink)(p)  // 加入到列表中
 	v.next = f.list
 	f.list = v
 }

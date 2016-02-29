@@ -251,7 +251,7 @@ func (l *TCPListener) AcceptTCP() (*TCPConn, error) { // 获得一个TCP连接
 	if l == nil || l.fd == nil {
 		return nil, syscall.EINVAL
 	}
-	fd, err := l.fd.accept()
+	fd, err := l.fd.accept() // 调用底层的accept
 	if err != nil {
 		return nil, &OpError{Op: "accept", Net: l.fd.net, Source: nil, Addr: l.fd.laddr, Err: err}
 	}

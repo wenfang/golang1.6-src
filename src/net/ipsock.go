@@ -213,7 +213,7 @@ func internetAddrList(net, addr string, deadline time.Time) (addrList, error) {
 			if host, port, err = SplitHostPort(addr); err != nil { // 分裂成主机和端口号
 				return nil, err
 			}
-			if portnum, err = LookupPort(net, port); err != nil {
+			if portnum, err = LookupPort(net, port); err != nil { // 转换端口号
 				return nil, err
 			}
 		}
@@ -249,7 +249,7 @@ func internetAddrList(net, addr string, deadline time.Time) (addrList, error) {
 		return addrList{inetaddr(IPAddr{IP: ip, Zone: zone})}, nil
 	}
 	// Try as a DNS name.
-	ips, err := lookupIPDeadline(host, deadline)
+	ips, err := lookupIPDeadline(host, deadline) // 查找dns
 	if err != nil {
 		return nil, err
 	}

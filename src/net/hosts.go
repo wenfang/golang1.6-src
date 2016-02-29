@@ -28,7 +28,7 @@ func parseLiteralIP(addr string) string {
 }
 
 // hosts contains known host entries.
-var hosts struct {
+var hosts struct { // 包含已知的主机列表项
 	sync.Mutex
 
 	// Key for the list of literal IP addresses must be a host

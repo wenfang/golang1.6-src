@@ -133,7 +133,7 @@ func signal_recv() uint32 {
 
 // Must only be called from a single goroutine at a time.
 //go:linkname signal_enable os/signal.signal_enable
-func signal_enable(s uint32) {
+func signal_enable(s uint32) { // enable信号
 	if !sig.inuse {
 		// The first call to signal_enable is for us
 		// to use for initialization.  It does not pass
