@@ -13,11 +13,11 @@ import "unsafe"
 // bottom, because node must be pointer-aligned, giving a total of 19 bits
 // of count.
 
-func lfstackPack(node *lfnode, cnt uintptr) uint64 {
+func lfstackPack(node *lfnode, cnt uintptr) uint64 { // 将节点信息压缩为一个uint64
 	return uint64(uintptr(unsafe.Pointer(node)))<<16 | uint64(cnt&(1<<19-1))
 }
 
-func lfstackUnpack(val uint64) (node *lfnode, cnt uintptr) {
+func lfstackUnpack(val uint64) (node *lfnode, cnt uintptr) { // 解开一个uint64为节点信息
 	node = (*lfnode)(unsafe.Pointer(uintptr(int64(val) >> 19 << 3)))
 	cnt = uintptr(val & (1<<19 - 1))
 	return

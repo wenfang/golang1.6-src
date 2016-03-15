@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	_Debugwbufs  = false // if true check wbufs consistency
+	_Debugwbufs  = false // if true check wbufs consistency 如果是true的话，检查wbufs的一致性
 	_WorkbufSize = 2048  // in bytes; larger values result in less contention workbuf的大小2K
 )
 
@@ -24,8 +24,8 @@ const (
 // objects.  A grey object is one that is marked and on a work
 // queue.  A black object is marked and not on a work queue.
 //
-// 写屏障,root发现,栈scan和对象scan产生了到灰对象的指针。scan消耗到
-// 灰对象的指针，将它们置黑。
+// 写屏障,查找root,栈scan和对象scan产生指向灰对象的指针。scan消耗
+// 这种指针，将它们置黑，然后scan，隐含的可能将产生新的对灰对象的指针。
 // Write barriers, root discovery, stack scanning, and object scanning
 // produce pointers to grey objects.  Scanning consumes pointers to
 // grey objects, thus blackening them, and then scans them,

@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package singleflight provides a duplicate function call suppression
-// mechanism.
+// mechanism. 提供了相同函数调用的压制机制
 package singleflight
 
 import "sync"
@@ -26,7 +26,7 @@ type call struct {
 
 // Group represents a class of work and forms a namespace in
 // which units of work can be executed with duplicate suppression.
-type Group struct {
+type Group struct { // 调用组
 	mu sync.Mutex       // protects m
 	m  map[string]*call // lazily initialized
 }
@@ -49,18 +49,18 @@ func (g *Group) Do(key string, fn func() (interface{}, error)) (v interface{}, e
 	if g.m == nil {
 		g.m = make(map[string]*call)
 	}
-	if c, ok := g.m[key]; ok {
-		c.dups++
+	if c, ok := g.m[key]; ok { // 如果已经找到对应的key
+		c.dups++ // 重复的次数增加
 		g.mu.Unlock()
-		c.wg.Wait()
-		return c.val, c.err, true
+		c.wg.Wait()               // 等待执行完毕
+		return c.val, c.err, true // 输出返回值和error
 	}
-	c := new(call)
+	c := new(call) // 创建一个新的call结构
 	c.wg.Add(1)
 	g.m[key] = c
 	g.mu.Unlock()
 
-	g.doCall(c, key, fn)
+	g.doCall(c, key, fn) // 执行Call
 	return c.val, c.err, c.dups > 0
 }
 

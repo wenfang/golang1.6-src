@@ -11,7 +11,7 @@ import (
 )
 
 /*
-Stack layout parameters.
+Stack layout parameters. 栈布局参数
 Included both by runtime (compiled via 6c) and linkers (compiled via gcc).
 
 The per-goroutine g->stackguard is set to point StackGuard bytes
@@ -158,7 +158,7 @@ var stackLarge struct {
 // Cached value of haveexperiment("framepointer")
 var framepointer_enabled bool
 
-func stackinit() {
+func stackinit() { // 初始化栈
 	if _StackCacheSize&_PageMask != 0 {
 		throw("cache size must be a multiple of page size")
 	}
@@ -477,7 +477,7 @@ func stackfree(stk stack, n uintptr) {
 	}
 }
 
-var maxstacksize uintptr = 1 << 20 // enough until runtime.main sets it for real
+var maxstacksize uintptr = 1 << 20 // enough until runtime.main sets it for real 最大的栈大小
 
 var ptrnames = []string{
 	0: "scalar",
@@ -730,7 +730,7 @@ func fillstack(stk stack, b byte) {
 // Copies gp's stack to a new stack of a different size.
 // Caller must have changed gp status to Gcopystack.
 func copystack(gp *g, newsize uintptr) {
-	if gp.syscallsp != 0 {
+	if gp.syscallsp != 0 { // 在系统调用中不能进行栈增长
 		throw("stack growth not allowed in system call")
 	}
 	old := gp.stack

@@ -18,17 +18,17 @@ import (
 
 const (
 	maxAlign  = 8
-	hchanSize = unsafe.Sizeof(hchan{}) + uintptr(-int(unsafe.Sizeof(hchan{}))&(maxAlign-1))
+	hchanSize = unsafe.Sizeof(hchan{}) + uintptr(-int(unsafe.Sizeof(hchan{}))&(maxAlign-1)) // 对齐后的hchan结构大小
 	debugChan = false
 )
 
 type hchan struct {
-	qcount   uint           // total data in the queue
-	dataqsiz uint           // size of the circular queue
+	qcount   uint           // total data in the queue 队列中全部元素的数量
+	dataqsiz uint           // size of the circular queue 循环队列的大小
 	buf      unsafe.Pointer // points to an array of dataqsiz elements
-	elemsize uint16
+	elemsize uint16         // 元素大小
 	closed   uint32
-	elemtype *_type // element type
+	elemtype *_type // element type 元素类型
 	sendx    uint   // send index 发送索引
 	recvx    uint   // receive index 接收索引
 	recvq    waitq  // list of recv waiters
@@ -36,7 +36,7 @@ type hchan struct {
 	lock     mutex
 }
 
-type waitq struct {
+type waitq struct { // goroutine等待队列结构
 	first *sudog
 	last  *sudog
 }
@@ -46,7 +46,7 @@ func reflect_makechan(t *chantype, size int64) *hchan { // 反射创建chan
 	return makechan(t, size)
 }
 
-func makechan(t *chantype, size int64) *hchan { // 创建hchan结构指针
+func makechan(t *chantype, size int64) *hchan { // 创建hchan结构
 	elem := t.elem // 获得元素
 
 	// compiler checks this but be safe.
@@ -75,9 +75,9 @@ func makechan(t *chantype, size int64) *hchan { // 创建hchan结构指针
 			// Also prevents us from pointing beyond the allocation (see issue 9401).
 			c.buf = unsafe.Pointer(c)
 		}
-	} else { // 如果包含指针，用new分配结构
+	} else { // 如果包含指针并且分配的大小不为0，用new分配结构
 		c = new(hchan)                        // 创建hchan结构
-		c.buf = newarray(elem, uintptr(size)) // 分配数组
+		c.buf = newarray(elem, uintptr(size)) // 分配数组，保存元素
 	}
 	c.elemsize = uint16(elem.size) // 设置每个元素的大小
 	c.elemtype = elem              // 设置元素类型

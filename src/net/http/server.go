@@ -2093,7 +2093,7 @@ func (srv *Server) ListenAndServe() error { // 对应的Server执行Listen后执
 	if addr == "" {
 		addr = ":http"
 	}
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp", addr) // 根据地质创建Listener
 	if err != nil {
 		return err
 	}
@@ -2193,7 +2193,7 @@ func (s *Server) logf(format string, args ...interface{}) {
 //
 // ListenAndServe always returns a non-nil error.
 func ListenAndServe(addr string, handler Handler) error {
-	server := &Server{Addr: addr, Handler: handler}
+	server := &Server{Addr: addr, Handler: handler} // 创建一个server
 	return server.ListenAndServe()
 }
 

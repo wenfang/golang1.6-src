@@ -71,7 +71,7 @@ func (d *Dialer) deadline(now time.Time) time.Time {
 	if d.Timeout == 0 { // 如果没有设定超时，直接返回Deadline
 		return d.Deadline
 	}
-	timeoutDeadline := now.Add(d.Timeout)
+	timeoutDeadline := now.Add(d.Timeout)                          // 否则用now加上Timeout的时间
 	if d.Deadline.IsZero() || timeoutDeadline.Before(d.Deadline) { // 和d.Deadline进行比较，返回最近的时间
 		return timeoutDeadline
 	} else {
@@ -191,7 +191,7 @@ func resolveAddrList(op, net, addr string, deadline time.Time) (addrList, error)
 //
 // For Unix networks, the address must be a file system path.
 func Dial(network, address string) (Conn, error) { // 连接指定的地址
-	var d Dialer
+	var d Dialer                    // 设置一个缺省的Dialer
 	return d.Dial(network, address) // 内部创建一个Dialer进行Dial
 }
 
@@ -214,7 +214,7 @@ type dialContext struct {
 // See func Dial for a description of the network and address
 // parameters.
 func (d *Dialer) Dial(network, address string) (Conn, error) { // 连接到指定地址，返回Conn连接结构
-	finalDeadline := d.deadline(time.Now())
+	finalDeadline := d.deadline(time.Now()) // 返回deadline的绝对时间
 	addrs, err := resolveAddrList("dial", network, address, finalDeadline)
 	if err != nil {
 		return nil, &OpError{Op: "dial", Net: network, Source: nil, Addr: nil, Err: err}

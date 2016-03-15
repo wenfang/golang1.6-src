@@ -6,6 +6,8 @@ package runtime
 
 // This file contains the implementation of Go's map type. 对go的map的实现
 //
+// map只是一个hash表，数据以bucket数组的方式排列。每个bucket包含
+// 最多8个key/value对。hash值的低位用来选择bucket。高位用来在bucket中选择entry。
 // A map is just a hash table.  The data is arranged
 // into an array of buckets.  Each bucket contains up to
 // 8 key/value pairs.  The low-order bits of the hash are
@@ -13,9 +15,11 @@ package runtime
 // high-order bits of each hash to distinguish the entries
 // within a single bucket.
 //
+// 如果bucket中有多于8个key，将其连接到另一个bucket上
 // If more than 8 keys hash to a bucket, we chain on
 // extra buckets.
 //
+// 当hash表增长时,分配一个两倍大小bucket。
 // When the hashtable grows, we allocate a new array
 // of buckets twice as big.  Buckets are incrementally
 // copied from the old bucket array to the new bucket array.
@@ -62,7 +66,7 @@ import (
 const (
 	// Maximum number of key/value pairs a bucket can hold.
 	bucketCntBits = 3                  // 一个bucket中可以容纳的最大数量的key/value对，设置为3个bit，也就是8个
-	bucketCnt     = 1 << bucketCntBits // 一个bucket中可以容纳的key/value对的数量
+	bucketCnt     = 1 << bucketCntBits // 一个bucket中可以容纳的key/value对的数量8个
 
 	// Maximum average load of a bucket that triggers growth.
 	loadFactor = 6.5 // 触发hash表增长的最大平均负载
@@ -105,13 +109,13 @@ const (
 type hmap struct { // Go map结构的头部
 	// Note: the format of the Hmap is encoded in ../../cmd/internal/gc/reflect.go and
 	// ../reflect/type.go.  Don't change this structure without also changing that code!
-	count int // # live cells == size of map.  Must be first (used by len() builtin)
+	count int // # live cells == size of map.  Must be first (used by len() builtin) map的大小
 	flags uint8
 	B     uint8  // log_2 of # of buckets (can hold up to loadFactor * 2^B items)
-	hash0 uint32 // hash seed
+	hash0 uint32 // hash seed hash种子
 
-	buckets    unsafe.Pointer // array of 2^B Buckets. may be nil if count==0.
-	oldbuckets unsafe.Pointer // previous bucket array of half the size, non-nil only when growing
+	buckets    unsafe.Pointer // array of 2^B Buckets. may be nil if count==0. 指向buckets的指针，如果count==0，为nil
+	oldbuckets unsafe.Pointer // previous bucket array of half the size, non-nil only when growing 在map grow时使用
 	nevacuate  uintptr        // progress counter for evacuation (buckets less than this have been evacuated)
 
 	// If both key and value do not contain pointers and are inline, then we mark bucket
@@ -381,7 +385,7 @@ func mapaccess2(t *maptype, h *hmap, key unsafe.Pointer) (unsafe.Pointer, bool) 
 }
 
 // returns both key and value.  Used by map iterator
-func mapaccessK(t *maptype, h *hmap, key unsafe.Pointer) (unsafe.Pointer, unsafe.Pointer) {
+func mapaccessK(t *maptype, h *hmap, key unsafe.Pointer) (unsafe.Pointer, unsafe.Pointer) { // 返回key和value，被map迭代器访问
 	if h == nil || h.count == 0 {
 		return nil, nil
 	}
@@ -542,7 +546,7 @@ done:
 	h.flags &^= hashWriting
 }
 
-func mapdelete(t *maptype, h *hmap, key unsafe.Pointer) {
+func mapdelete(t *maptype, h *hmap, key unsafe.Pointer) { // 从map中删除一个可以
 	if raceenabled && h != nil {
 		callerpc := getcallerpc(unsafe.Pointer(&t))
 		pc := funcPC(mapdelete)
@@ -620,17 +624,17 @@ func mapiterinit(t *maptype, h *hmap, it *hiter) { // 初始化map迭代器
 		racereadpc(unsafe.Pointer(h), callerpc, funcPC(mapiterinit))
 	}
 
-	if h == nil || h.count == 0 {
+	if h == nil || h.count == 0 { // 如果map为空，返回迭代器的key和value为nil
 		it.key = nil
 		it.value = nil
 		return
 	}
 
-	if unsafe.Sizeof(hiter{})/sys.PtrSize != 12 {
+	if unsafe.Sizeof(hiter{})/sys.PtrSize != 12 { // 迭代器大小错误抛出异常
 		throw("hash_iter size incorrect") // see ../../cmd/internal/gc/reflect.go
 	}
-	it.t = t
-	it.h = h
+	it.t = t // 设置迭代器对应的map类型
+	it.h = h // 设置迭代器对应的map
 
 	// grab snapshot of bucket state
 	it.B = h.B

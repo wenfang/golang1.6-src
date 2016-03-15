@@ -201,7 +201,7 @@ func JoinHostPort(host, port string) string { // 生成host:port的形式，如�
 // address or a DNS name, and returns a list of internet protocol
 // family addresses. The result contains at least one address when
 // error is nil.
-func internetAddrList(net, addr string, deadline time.Time) (addrList, error) {
+func internetAddrList(net, addr string, deadline time.Time) (addrList, error) { // 根据网络类型解析地址，deadline为查找DNS时的deadline
 	var (
 		err        error
 		host, port string
@@ -236,7 +236,7 @@ func internetAddrList(net, addr string, deadline time.Time) (addrList, error) {
 			panic("unexpected network: " + net)
 		}
 	}
-	if host == "" {
+	if host == "" { // 主机号为空
 		return addrList{inetaddr(IPAddr{})}, nil
 	}
 	// Try as a literal IP address.

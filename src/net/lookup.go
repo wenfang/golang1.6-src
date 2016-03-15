@@ -63,7 +63,7 @@ var lookupGroup singleflight.Group
 // lookupIPMerge wraps lookupIP, but makes sure that for any given
 // host, only one lookup is in-flight at a time. The returned memory
 // is always owned by the caller.
-func lookupIPMerge(host string) (addrs []IPAddr, err error) {
+func lookupIPMerge(host string) (addrs []IPAddr, err error) { // 查找host对应的ip地址
 	addrsi, err, shared := lookupGroup.Do(host, func() (interface{}, error) {
 		return testHookLookupIP(lookupIP, host)
 	})
@@ -88,7 +88,7 @@ func lookupIPReturn(addrsi interface{}, err error, shared bool) ([]IPAddr, error
 // lookupIPDeadline looks up a hostname with a deadline.
 func lookupIPDeadline(host string, deadline time.Time) (addrs []IPAddr, err error) {
 	if deadline.IsZero() { // 如果没有deadline，直接调用lookupIPMerge
-		return lookupIPMerge(host)
+		return lookupIPMerge(host) // 没有超时时间限定，直接调用lookupIPMerge
 	}
 
 	// We could push the deadline down into the name resolution

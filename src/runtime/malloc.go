@@ -132,7 +132,7 @@ const (
 	_HeapAllocChunk = 1 << 20                // Chunk size for heap growth
 
 	// Per-P, per order stack segment cache size.
-	_StackCacheSize = 32 * 1024
+	_StackCacheSize = 32 * 1024 // 栈cache大小32K
 
 	// 被cache的order，order 0是固定的stackSize大小，每个后一个order是前一个的2倍
 	// cache 2KB, 4KB, 8KB和16KB的栈，更大的栈会直接分配
