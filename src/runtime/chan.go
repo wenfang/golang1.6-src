@@ -22,7 +22,7 @@ const (
 	debugChan = false
 )
 
-type hchan struct {
+type hchan struct { // chan的内部类型
 	qcount   uint           // total data in the queue 队列中全部元素的数量
 	dataqsiz uint           // size of the circular queue 循环队列的大小
 	buf      unsafe.Pointer // points to an array of dataqsiz elements
@@ -121,11 +121,11 @@ func chansend(t *chantype, c *hchan, ep unsafe.Pointer, block bool, callerpc uin
 		msanread(ep, t.elem.size)
 	}
 
-	if c == nil {
-		if !block {
+	if c == nil { // 如果是空chan
+		if !block { // 如果不能阻塞，返回false，select探测时使用
 			return false
 		}
-		gopark(nil, nil, "chan send (nil chan)", traceEvGoStop, 2)
+		gopark(nil, nil, "chan send (nil chan)", traceEvGoStop, 2) // 向空chan发送，阻塞在这里
 		throw("unreachable")
 	}
 
@@ -163,7 +163,7 @@ func chansend(t *chantype, c *hchan, ep unsafe.Pointer, block bool, callerpc uin
 
 	lock(&c.lock) // chan加锁
 
-	if c.closed != 0 {
+	if c.closed != 0 { // 如果chan已经关闭panic
 		unlock(&c.lock)
 		panic("send on closed channel")
 	}

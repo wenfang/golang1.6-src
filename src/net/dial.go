@@ -214,8 +214,8 @@ type dialContext struct {
 // See func Dial for a description of the network and address
 // parameters.
 func (d *Dialer) Dial(network, address string) (Conn, error) { // 连接到指定地址，返回Conn连接结构
-	finalDeadline := d.deadline(time.Now()) // 返回deadline的绝对时间
-	addrs, err := resolveAddrList("dial", network, address, finalDeadline)
+	finalDeadline := d.deadline(time.Now())                                // 返回deadline的绝对时间
+	addrs, err := resolveAddrList("dial", network, address, finalDeadline) // 解析出来要连接的地址
 	if err != nil {
 		return nil, &OpError{Op: "dial", Net: network, Source: nil, Addr: nil, Err: err}
 	}
@@ -231,20 +231,20 @@ func (d *Dialer) Dial(network, address string) (Conn, error) { // 连接到指�
 	if d.DualStack && network == "tcp" {
 		primaries, fallbacks = addrs.partition(isIPv4)
 	} else {
-		primaries = addrs
+		primaries = addrs // 地址列表
 	}
 
 	var c Conn
 	if len(fallbacks) == 0 {
 		// dialParallel can accept an empty fallbacks list,
 		// but this shortcut avoids the goroutine/channel overhead.
-		c, err = dialSerial(ctx, primaries, nil)
+		c, err = dialSerial(ctx, primaries, nil) // 串行连接
 	} else {
-		c, err = dialParallel(ctx, primaries, fallbacks)
+		c, err = dialParallel(ctx, primaries, fallbacks) // 并行连接
 	}
 
 	if d.KeepAlive > 0 && err == nil { // 如果具有KeepAlive
-		if tc, ok := c.(*TCPConn); ok {
+		if tc, ok := c.(*TCPConn); ok { // 设置连接的KeepAlive
 			setKeepAlive(tc.fd, true)
 			setKeepAlivePeriod(tc.fd, d.KeepAlive)
 			testHookSetKeepAlive()
@@ -402,7 +402,7 @@ func Listen(net, laddr string) (Listener, error) { // 在一个地址上监听�
 		return nil, &OpError{Op: "listen", Net: net, Source: nil, Addr: nil, Err: err}
 	}
 	var l Listener
-	switch la := addrs.first(isIPv4).(type) {
+	switch la := addrs.first(isIPv4).(type) { // 选择第一个ipv4地址
 	case *TCPAddr:
 		l, err = ListenTCP(net, la) // 在TCP地址上Listen
 	case *UnixAddr:

@@ -744,7 +744,7 @@ func ParseQuery(query string) (m Values, err error) { // 解析查询为Key，va
 	return
 }
 
-func parseQuery(m Values, query string) (err error) { // 解析查询，获得key value的形式
+func parseQuery(m Values, query string) (err error) { // 解析查询，获得key value的形式，由m返回
 	for query != "" {
 		key := query
 		if i := strings.IndexAny(key, "&;"); i >= 0 {

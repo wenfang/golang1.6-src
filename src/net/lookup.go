@@ -163,7 +163,7 @@ func LookupSRV(service, proto, name string) (cname string, addrs []*SRV, err err
 }
 
 // LookupMX returns the DNS MX records for the given domain name sorted by preference.
-func LookupMX(name string) (mxs []*MX, err error) {
+func LookupMX(name string) (mxs []*MX, err error) { // 查找MX记录
 	return lookupMX(name)
 }
 

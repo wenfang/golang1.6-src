@@ -100,8 +100,8 @@ const (
 	heapBitmapScale = sys.PtrSize * (8 / 2) // number of data bytes described by one heap bitmap byte
 
 	// all mark/pointer bits in a byte
-	bitMarkedAll  = bitMarked | bitMarked<<heapBitsShift | bitMarked<<(2*heapBitsShift) | bitMarked<<(3*heapBitsShift)
-	bitPointerAll = bitPointer | bitPointer<<heapBitsShift | bitPointer<<(2*heapBitsShift) | bitPointer<<(3*heapBitsShift)
+	bitMarkedAll  = bitMarked | bitMarked<<heapBitsShift | bitMarked<<(2*heapBitsShift) | bitMarked<<(3*heapBitsShift)     // 所有的Marked位的标识
+	bitPointerAll = bitPointer | bitPointer<<heapBitsShift | bitPointer<<(2*heapBitsShift) | bitPointer<<(3*heapBitsShift) // 所有的指针位的标识
 )
 
 // addb returns the byte pointer p+n.

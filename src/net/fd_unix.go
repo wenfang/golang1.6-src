@@ -415,7 +415,7 @@ func (fd *netFD) accept() (netfd *netFD, err error) {
 		return nil, err
 	}
 	for {
-		s, rsa, err = accept(fd.sysfd)
+		s, rsa, err = accept(fd.sysfd) // 执行accept
 		if err != nil {
 			nerr, ok := err.(*os.SyscallError)
 			if !ok {

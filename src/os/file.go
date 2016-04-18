@@ -92,7 +92,7 @@ func (f *File) Read(b []byte) (n int, err error) { // 读取数据到b中
 	if f == nil { // 返回句柄无效错误
 		return 0, ErrInvalid
 	}
-	n, e := f.read(b) // 调用read读数据
+	n, e := f.read(b)                     // 调用read读数据
 	if n == 0 && len(b) > 0 && e == nil { // 读到文件结束
 		return 0, io.EOF
 	}
@@ -106,7 +106,7 @@ func (f *File) Read(b []byte) (n int, err error) { // 读取数据到b中
 // It returns the number of bytes read and the error, if any.
 // ReadAt always returns a non-nil error when n < len(b).
 // At end of file, that error is io.EOF.
-func (f *File) ReadAt(b []byte, off int64) (n int, err error) { // 从off位置读取数据到b中
+func (f *File) ReadAt(b []byte, off int64) (n int, err error) { // 从off位置读取数据到b中，实现了ReadAt接口
 	if f == nil {
 		return 0, ErrInvalid
 	}
@@ -190,7 +190,7 @@ func (f *File) Seek(offset int64, whence int) (ret int64, err error) { // 调用
 
 // WriteString is like Write, but writes the contents of string s rather than
 // a slice of bytes.
-func (f *File) WriteString(s string) (n int, err error) {
+func (f *File) WriteString(s string) (n int, err error) { // 写一个string
 	if f == nil {
 		return 0, ErrInvalid
 	}

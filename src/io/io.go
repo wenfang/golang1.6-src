@@ -199,7 +199,7 @@ type WriterTo interface {
 // same input source.
 //
 // Implementations must not retain p.
-type ReaderAt interface {
+type ReaderAt interface { // ReaderAt接口，实现了ReadAt方法
 	ReadAt(p []byte, off int64) (n int, err error)
 }
 

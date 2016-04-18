@@ -39,7 +39,7 @@ func FileListener(f *os.File) (ln Listener, err error) { // 将文件变为Liste
 // corresponding to the open file f.
 // It is the caller's responsibility to close f when finished.
 // Closing c does not affect f, and closing f does not affect c.
-func FilePacketConn(f *os.File) (c PacketConn, err error) {
+func FilePacketConn(f *os.File) (c PacketConn, err error) { // 将文件变为PacketConn
 	c, err = filePacketConn(f)
 	if err != nil {
 		err = &OpError{Op: "file", Net: "file+net", Source: nil, Addr: fileAddr(f.Name()), Err: err}

@@ -180,7 +180,7 @@ func NewEncoder(w io.Writer) *Encoder { // 创建一个新的Encoder
 //
 // See the documentation for Marshal for details about the
 // conversion of Go values to JSON.
-func (enc *Encoder) Encode(v interface{}) error {
+func (enc *Encoder) Encode(v interface{}) error { // 针对v进行编码
 	if enc.err != nil { // 如果encoder已经出错，返回错误
 		return enc.err
 	}

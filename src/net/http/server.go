@@ -2107,7 +2107,7 @@ var testHookServerServe func(*Server, net.Listener) // used if non-nil
 // then call srv.Handler to reply to them.
 // Serve always returns a non-nil error.
 func (srv *Server) Serve(l net.Listener) error {
-	defer l.Close()
+	defer l.Close() // 关闭Listener
 	if fn := testHookServerServe; fn != nil {
 		fn(srv, l)
 	}
@@ -2118,7 +2118,7 @@ func (srv *Server) Serve(l net.Listener) error {
 	for {
 		rw, e := l.Accept()
 		if e != nil {
-			if ne, ok := e.(net.Error); ok && ne.Temporary() {
+			if ne, ok := e.(net.Error); ok && ne.Temporary() { // 如果是网络临时错误
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond
 				} else {
@@ -2421,7 +2421,7 @@ func (tw *timeoutWriter) writeHeader(code int) {
 // connections. It's used by ListenAndServe and ListenAndServeTLS so
 // dead TCP connections (e.g. closing laptop mid-download) eventually
 // go away.
-type tcpKeepAliveListener struct {
+type tcpKeepAliveListener struct { // 具有keep alive功能的Listener
 	*net.TCPListener
 }
 

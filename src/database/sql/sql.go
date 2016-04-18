@@ -25,12 +25,12 @@ import (
 )
 
 var (
-	driversMu sync.RWMutex
+	driversMu sync.RWMutex                     // drivers的锁
 	drivers   = make(map[string]driver.Driver) // 保存driver的map
 )
 
 // nowFunc returns the current time; it's overridden in tests.
-var nowFunc = time.Now
+var nowFunc = time.Now // 获取当前时间的函数
 
 // Register makes a database driver available by the provided name.
 // If Register is called twice with the same name or if driver is nil,
@@ -1246,7 +1246,7 @@ func (tx *Tx) closePrepared() {
 
 // Commit commits the transaction.
 func (tx *Tx) Commit() error { // 提交一个事务
-	if tx.done {
+	if tx.done { // 事务已经完成了
 		return ErrTxDone
 	}
 	tx.dc.Lock()

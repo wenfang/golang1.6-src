@@ -27,7 +27,7 @@ var (
 )
 
 // An addrList represents a list of network endpoint addresses.
-type addrList []Addr
+type addrList []Addr // 地址列表
 
 // isIPv4 returns true if the Addr contains an IPv4 address.
 func isIPv4(addr Addr) bool {
@@ -44,7 +44,7 @@ func isIPv4(addr Addr) bool {
 
 // first returns the first address which satisfies strategy, or if
 // none do, then the first address of any kind.
-func (addrs addrList) first(strategy func(Addr) bool) Addr {
+func (addrs addrList) first(strategy func(Addr) bool) Addr { // 根据策略选择第一个地址
 	for _, addr := range addrs {
 		if strategy(addr) {
 			return addr

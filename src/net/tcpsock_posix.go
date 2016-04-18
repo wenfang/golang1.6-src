@@ -255,7 +255,7 @@ func (l *TCPListener) AcceptTCP() (*TCPConn, error) { // 获得一个TCP连接
 	if err != nil {
 		return nil, &OpError{Op: "accept", Net: l.fd.net, Source: nil, Addr: l.fd.laddr, Err: err}
 	}
-	return newTCPConn(fd), nil
+	return newTCPConn(fd), nil // 创建新连接
 }
 
 // Accept implements the Accept method in the Listener interface; it
@@ -265,7 +265,7 @@ func (l *TCPListener) Accept() (Conn, error) { // 执行Accept返回一个新的
 	if err != nil {
 		return nil, err
 	}
-	return c, nil
+	return c, nil // 返回Accept到的连接结构
 }
 
 // Close stops listening on the TCP address.

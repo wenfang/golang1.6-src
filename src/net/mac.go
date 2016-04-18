@@ -35,7 +35,7 @@ func (a HardwareAddr) String() string {
 //   0123.4567.89ab
 //   0123.4567.89ab.cdef
 //   0123.4567.89ab.cdef.0000.0123.4567.89ab.cdef.0000
-func ParseMAC(s string) (hw HardwareAddr, err error) { // 解析MAC地址
+func ParseMAC(s string) (hw HardwareAddr, err error) { // 解析MAC地址，解析为硬件地址
 	if len(s) < 14 {
 		goto error
 	}
