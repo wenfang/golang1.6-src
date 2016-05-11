@@ -426,8 +426,8 @@ func alwaysFalse() bool { return false }
 
 func (c *Client) doFollowingRedirects(ireq *Request, shouldRedirect func(int) bool) (resp *Response, err error) {
 	var base *url.URL
-	redirectChecker := c.CheckRedirect
-	if redirectChecker == nil { // 如果没有设定重定向检查，设定缺省的重定向检查
+	redirectChecker := c.CheckRedirect // 获取重定向检查
+	if redirectChecker == nil {        // 如果没有设定重定向检查，设定缺省的重定向检查
 		redirectChecker = defaultCheckRedirect
 	}
 	var via []*Request

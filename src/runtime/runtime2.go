@@ -302,7 +302,7 @@ type m struct {
 	helpgc        int32
 	spinning      bool // m is out of work and is actively looking for work
 	blocked       bool // m is blocked on a note
-	inwb          bool // m is executing a write barrier
+	inwb          bool // m is executing a write barrier m是否正在执行一个write barrier
 	newSigstack   bool // minit on C thread called sigaltstack
 	printlock     int8
 	fastrand      uint32

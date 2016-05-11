@@ -94,7 +94,7 @@ import (
 //go:nowritebarrierrec
 func gcmarkwb_m(slot *uintptr, ptr uintptr) {
 	if writeBarrier.needed { // 如果需要写屏障
-		if ptr != 0 && inheap(ptr) { // 对指针赋值，如果指针非空，并且ptr指向堆内地址，调用shade
+		if ptr != 0 && inheap(ptr) { // 对指针赋值，如果指针非空，并且ptr指向堆内地址，调用shade，将对象置灰
 			shade(ptr)
 		}
 	}
@@ -111,7 +111,7 @@ func gcmarkwb_m(slot *uintptr, ptr uintptr) {
 // a pointer to a heap object.
 //go:nosplit
 func writebarrierptr_nostore1(dst *uintptr, src uintptr) {
-	mp := acquirem()
+	mp := acquirem() // 获取当前的m
 	if mp.inwb || mp.dying > 0 {
 		releasem(mp)
 		return
@@ -120,10 +120,10 @@ func writebarrierptr_nostore1(dst *uintptr, src uintptr) {
 		if mp.p == 0 && memstats.enablegc && !mp.inwb && inheap(src) {
 			throw("writebarrierptr_nostore1 called with mp.p == nil")
 		}
-		mp.inwb = true
-		gcmarkwb_m(dst, src)
+		mp.inwb = true       // 设置在write barrier中
+		gcmarkwb_m(dst, src) // 标记src地址
 	})
-	mp.inwb = false
+	mp.inwb = false // 已经不在write barrier中了
 	releasem(mp)
 }
 
@@ -135,7 +135,7 @@ func writebarrierptr(dst *uintptr, src uintptr) {
 	if writeBarrier.cgo {
 		cgoCheckWriteBarrier(dst, src)
 	}
-	if !writeBarrier.needed {
+	if !writeBarrier.needed { // 如果不需要write barrier直接返回
 		return
 	}
 	if src != 0 && (src < sys.PhysPageSize || src == poisonStack) {

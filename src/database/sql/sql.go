@@ -711,7 +711,7 @@ func (db *DB) Stats() DBStats {
 func (db *DB) maybeOpenNewConnections() {
 	numRequests := len(db.connRequests) - db.pendingOpens // 获得请求的数量
 	if db.maxOpen > 0 {                                   // 如果设置了最大打开连接的数量
-		numCanOpen := db.maxOpen - db.numOpen
+		numCanOpen := db.maxOpen - db.numOpen // 获取还可打开的数量
 		if numRequests > numCanOpen {
 			numRequests = numCanOpen
 		}

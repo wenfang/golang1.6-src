@@ -465,7 +465,7 @@ func acquirem() *m { // 获得当前goroutine对应的m，并给m加锁
 //go:nosplit
 func releasem(mp *m) { // 释放m
 	_g_ := getg() // 获得当前的goroutine
-	mp.locks--
+	mp.locks--    // 减少mp的引用计数
 	if mp.locks == 0 && _g_.preempt {
 		// restore the preemption request in case we've cleared it in newstack
 		_g_.stackguard0 = stackPreempt
