@@ -763,7 +763,7 @@ func readRequest(b *bufio.Reader, deleteHostHeader bool) (req *Request, err erro
 	}
 
 	// Subsequent lines: Key: value.
-	mimeHeader, err := tp.ReadMIMEHeader()
+	mimeHeader, err := tp.ReadMIMEHeader() // 读取MIMEHeader
 	if err != nil {
 		return nil, err
 	}

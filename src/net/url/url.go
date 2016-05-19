@@ -96,7 +96,7 @@ func (e InvalidHostError) Error() string {
 // reserved characters correctly. See golang.org/issue/5684.
 func shouldEscape(c byte, mode encoding) bool {
 	// §2.3 Unreserved characters (alphanum)
-	if 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' || '0' <= c && c <= '9' {
+	if 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' || '0' <= c && c <= '9' { // 只包含字母数字，不用escape
 		return false
 	}
 

@@ -306,7 +306,7 @@ func suppressedHeaders(status int) []string {
 }
 
 // msg is *Request or *Response.
-func readTransfer(msg interface{}, r *bufio.Reader) (err error) {
+func readTransfer(msg interface{}, r *bufio.Reader) (err error) { // msg为Request或者Response
 	t := &transferReader{RequestMethod: "GET"}
 
 	// Unify input
@@ -381,7 +381,7 @@ func readTransfer(msg interface{}, r *bufio.Reader) (err error) {
 
 	// Prepare body reader.  ContentLength < 0 means chunked encoding
 	// or close connection when finished, since multipart is not supported yet
-	switch {
+	switch { // 设置Body的Reader
 	case chunked(t.TransferEncoding):
 		if noBodyExpected(t.RequestMethod) {
 			t.Body = eofReader

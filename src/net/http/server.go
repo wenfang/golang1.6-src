@@ -466,7 +466,7 @@ func (w *response) ReadFrom(src io.Reader) (n int64, err error) {
 const debugServerConnections = false // 设置是否debug http连接
 
 // Create new connection from rwc.
-func (srv *Server) newConn(rwc net.Conn) *conn {
+func (srv *Server) newConn(rwc net.Conn) *conn { // 根据网络conn创建一个conn连接结构
 	c := &conn{
 		server: srv,
 		rwc:    rwc,
@@ -703,7 +703,7 @@ func (c *conn) readRequest() (w *response, err error) { // 读出请求返回响
 		peek, _ := c.bufr.Peek(4) // ReadRequest will get err below
 		c.bufr.Discard(numLeadingCRorLF(peek))
 	}
-	req, err := readRequest(c.bufr, keepHostHeader)
+	req, err := readRequest(c.bufr, keepHostHeader) // 读成请求结构
 	c.mu.Unlock()
 	if err != nil {
 		if c.r.hitReadLimit() {
@@ -1381,8 +1381,8 @@ type badRequestError string
 func (e badRequestError) Error() string { return "Bad Request: " + string(e) }
 
 // Serve a new connection.
-func (c *conn) serve() {
-	c.remoteAddr = c.rwc.RemoteAddr().String()
+func (c *conn) serve() { // serve一个新的连接
+	c.remoteAddr = c.rwc.RemoteAddr().String() // 获得远程地址
 	defer func() {
 		if err := recover(); err != nil {
 			const size = 64 << 10
@@ -1423,7 +1423,7 @@ func (c *conn) serve() {
 	c.bufw = newBufioWriterSize(checkConnErrorWriter{c}, 4<<10)
 
 	for {
-		w, err := c.readRequest()
+		w, err := c.readRequest() // 读取请求
 		if c.r.remain != c.server.initialReadLimitSize() {
 			// If we read any bytes off the wire, we're active.
 			c.setState(c.rwc, StateActive)

@@ -35,7 +35,7 @@ func (i item) String() string { // 将item转换为字符串
 // itemType identifies the type of lex items.
 type itemType int
 
-const (
+const ( // 支持的各个item的类型
 	itemError        itemType = iota // error occurred; value is text of error
 	itemBool                         // boolean constant
 	itemChar                         // printable ASCII character; grab bag for comma etc.
@@ -106,9 +106,9 @@ type stateFn func(*lexer) stateFn
 // lexer holds the state of the scanner.
 type lexer struct { // 保持scanner的状态
 	name       string    // the name of the input; used only for error reports
-	input      string    // the string being scanned
-	leftDelim  string    // start of action
-	rightDelim string    // end of action
+	input      string    // the string being scanned 将要被scan的字符串
+	leftDelim  string    // start of action action开始
+	rightDelim string    // end of action action结束
 	state      stateFn   // the next lexing function to enter
 	pos        Pos       // current position in the input
 	start      Pos       // start position of this item
@@ -199,7 +199,7 @@ func (l *lexer) drain() {
 }
 
 // lex creates a new scanner for the input string.
-func lex(name, input, left, right string) *lexer {
+func lex(name, input, left, right string) *lexer { // 对输入字符串创建一个新的scanner
 	if left == "" {
 		left = leftDelim
 	}
@@ -627,12 +627,12 @@ Loop:
 }
 
 // isSpace reports whether r is a space character.
-func isSpace(r rune) bool {
+func isSpace(r rune) bool { // 是否是空格
 	return r == ' ' || r == '\t'
 }
 
 // isEndOfLine reports whether r is an end-of-line character.
-func isEndOfLine(r rune) bool {
+func isEndOfLine(r rune) bool { // 是否是行结束
 	return r == '\r' || r == '\n'
 }
 

@@ -1019,7 +1019,7 @@ func (db *DB) Exec(query string, args ...interface{}) (Result, error) { // 执�
 }
 
 func (db *DB) exec(query string, args []interface{}, strategy connReuseStrategy) (res Result, err error) {
-	dc, err := db.conn(strategy)
+	dc, err := db.conn(strategy) // 获得database的连接
 	if err != nil {
 		return nil, err
 	}
@@ -1027,13 +1027,13 @@ func (db *DB) exec(query string, args []interface{}, strategy connReuseStrategy)
 		db.putConn(dc, err)
 	}()
 
-	if execer, ok := dc.ci.(driver.Execer); ok {
+	if execer, ok := dc.ci.(driver.Execer); ok { // 如果是driver的Execer
 		dargs, err := driverArgs(nil, args)
 		if err != nil {
 			return nil, err
 		}
 		dc.Lock()
-		resi, err := execer.Exec(query, dargs)
+		resi, err := execer.Exec(query, dargs) // 执行Exec
 		dc.Unlock()
 		if err != driver.ErrSkip {
 			if err != nil {
