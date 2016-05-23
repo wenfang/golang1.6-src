@@ -703,7 +703,7 @@ func (c *conn) readRequest() (w *response, err error) { // 读出请求返回响
 		peek, _ := c.bufr.Peek(4) // ReadRequest will get err below
 		c.bufr.Discard(numLeadingCRorLF(peek))
 	}
-	req, err := readRequest(c.bufr, keepHostHeader) // 读成请求结构
+	req, err := readRequest(c.bufr, keepHostHeader) // 读出请求结构
 	c.mu.Unlock()
 	if err != nil {
 		if c.r.hitReadLimit() {
@@ -2093,7 +2093,7 @@ func (srv *Server) ListenAndServe() error { // 对应的Server执行Listen后执
 	if addr == "" {
 		addr = ":http"
 	}
-	ln, err := net.Listen("tcp", addr) // 根据地质创建Listener
+	ln, err := net.Listen("tcp", addr) // 根据地址创建Listener
 	if err != nil {
 		return err
 	}

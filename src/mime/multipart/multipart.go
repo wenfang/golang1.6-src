@@ -233,7 +233,7 @@ func (r *Reader) NextPart() (*Part, error) { // 从reader中读出下一个Part
 
 	expectNewPart := false
 	for { // 循环读取
-		line, err := r.bufReader.ReadSlice('\n')      // 先读出一行
+		line, err := r.bufReader.ReadSlice('\n') // 先读出一行
 
 		if err == io.EOF && r.isFinalBoundary(line) {
 			// If the buffer ends in "--boundary--" without the

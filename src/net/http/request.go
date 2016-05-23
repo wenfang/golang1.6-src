@@ -181,6 +181,8 @@ type Request struct {
 	// the value of URL.Host.
 	Host string
 
+	// Form包含解析的表单数据，既包含url中的数据也包含POST和PUT中的数据
+	// 在执行完ParseForm后，Form可用
 	// Form contains the parsed form data, including both the URL
 	// field's query parameters and the POST or PUT form data.
 	// This field is only available after ParseForm is called.
@@ -874,7 +876,7 @@ func copyValues(dst, src url.Values) {
 	}
 }
 
-func parsePostForm(r *Request) (vs url.Values, err error) {
+func parsePostForm(r *Request) (vs url.Values, err error) { // 解析POST数据为Values
 	if r.Body == nil {
 		err = errors.New("missing form body")
 		return
@@ -887,7 +889,7 @@ func parsePostForm(r *Request) (vs url.Values, err error) {
 	}
 	ct, _, err = mime.ParseMediaType(ct)
 	switch {
-	case ct == "application/x-www-form-urlencoded":
+	case ct == "application/x-www-form-urlencoded": // 类型为默认的表单数据
 		var reader io.Reader = r.Body
 		maxFormSize := int64(1<<63 - 1)
 		if _, ok := r.Body.(*maxBytesReader); !ok {
@@ -905,11 +907,11 @@ func parsePostForm(r *Request) (vs url.Values, err error) {
 			err = errors.New("http: POST too large")
 			return
 		}
-		vs, e = url.ParseQuery(string(b))
+		vs, e = url.ParseQuery(string(b)) // 解析表单数据
 		if err == nil {
 			err = e
 		}
-	case ct == "multipart/form-data":
+	case ct == "multipart/form-data": // 类型中包含文件
 		// handled by ParseMultipartForm (which is calling us, or should be)
 		// TODO(bradfitz): there are too many possible
 		// orders to call too many functions here.
@@ -932,25 +934,25 @@ func parsePostForm(r *Request) (vs url.Values, err error) {
 //
 // ParseMultipartForm calls ParseForm automatically.
 // It is idempotent.
-func (r *Request) ParseForm() error {
+func (r *Request) ParseForm() error { // 解析表单数据
 	var err error
-	if r.PostForm == nil {
+	if r.PostForm == nil { // 如果PostForm为空
 		if r.Method == "POST" || r.Method == "PUT" || r.Method == "PATCH" {
-			r.PostForm, err = parsePostForm(r)
+			r.PostForm, err = parsePostForm(r) // 对POST,PUT和PATCH方法，解析表单数据
 		}
 		if r.PostForm == nil {
 			r.PostForm = make(url.Values)
 		}
 	}
-	if r.Form == nil {
+	if r.Form == nil { // 如果Form表单为空
 		if len(r.PostForm) > 0 {
 			r.Form = make(url.Values)
-			copyValues(r.Form, r.PostForm)
+			copyValues(r.Form, r.PostForm) // 把Post表单的内容拷贝过来
 		}
 		var newValues url.Values
 		if r.URL != nil {
 			var e error
-			newValues, e = url.ParseQuery(r.URL.RawQuery)
+			newValues, e = url.ParseQuery(r.URL.RawQuery) // 解析原生查询
 			if err == nil {
 				err = e
 			}
@@ -973,12 +975,12 @@ func (r *Request) ParseForm() error {
 // disk in temporary files.
 // ParseMultipartForm calls ParseForm if necessary.
 // After one call to ParseMultipartForm, subsequent calls have no effect.
-func (r *Request) ParseMultipartForm(maxMemory int64) error {
-	if r.MultipartForm == multipartByReader {
+func (r *Request) ParseMultipartForm(maxMemory int64) error { // 作为multipart/form-data类型解析数据
+	if r.MultipartForm == multipartByReader { // multipart已经由multipartByReader处理了
 		return errors.New("http: multipart handled by MultipartReader")
 	}
 	if r.Form == nil {
-		err := r.ParseForm()
+		err := r.ParseForm() // 先解析表单
 		if err != nil {
 			return err
 		}

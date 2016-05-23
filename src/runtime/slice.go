@@ -49,7 +49,7 @@ func growslice_n(t *slicetype, old slice, n int) slice {
 // and it returns a new slice with at least that capacity, with the old data
 // copied into it.
 func growslice(t *slicetype, old slice, cap int) slice {
-	if cap < old.cap || t.elem.size > 0 && uintptr(cap) > _MaxMem/uintptr(t.elem.size) {
+	if cap < old.cap || t.elem.size > 0 && uintptr(cap) > _MaxMem/uintptr(t.elem.size) { // 要增长的空间过大
 		panic(errorString("growslice: cap out of range"))
 	}
 

@@ -72,7 +72,7 @@ const (
 	encodePath encoding = 1 + iota // 字符出现在path上
 	encodeHost                     // 字符出现在host部分
 	encodeZone
-	encodeUserPassword
+	encodeUserPassword   // 字符出现在user password部分
 	encodeQueryComponent // 字符出现在query部分
 	encodeFragment       // 字符出现在fragment部分
 )
@@ -94,7 +94,7 @@ func (e InvalidHostError) Error() string {
 //
 // Please be informed that for now shouldEscape does not check all
 // reserved characters correctly. See golang.org/issue/5684.
-func shouldEscape(c byte, mode encoding) bool {
+func shouldEscape(c byte, mode encoding) bool { // 判断byte是否应该被escape
 	// §2.3 Unreserved characters (alphanum)
 	if 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' || '0' <= c && c <= '9' { // 只包含字母数字，不用escape
 		return false
@@ -739,16 +739,16 @@ func (v Values) Del(key string) { // 删除某个key的值
 // valid query parameters found; err describes the first decoding error
 // encountered, if any.
 func ParseQuery(query string) (m Values, err error) { // 解析查询为Key，value的形式，解析查询字符串
-	m = make(Values)
-	err = parseQuery(m, query)
+	m = make(Values)           // 创建Values结构
+	err = parseQuery(m, query) // 解析查询为Values结构
 	return
 }
 
 func parseQuery(m Values, query string) (err error) { // 解析查询，获得key value的形式，由m返回
-	for query != "" {
+	for query != "" { // 如果查询为非空串
 		key := query
-		if i := strings.IndexAny(key, "&;"); i >= 0 {
-			key, query = key[:i], key[i+1:]
+		if i := strings.IndexAny(key, "&;"); i >= 0 { // 查找&和;
+			key, query = key[:i], key[i+1:] // 取出来key和查询
 		} else {
 			query = ""
 		}
@@ -756,17 +756,17 @@ func parseQuery(m Values, query string) (err error) { // 解析查询，获得ke
 			continue
 		}
 		value := ""
-		if i := strings.Index(key, "="); i >= 0 {
+		if i := strings.Index(key, "="); i >= 0 { // 进一步用=切割，分离出key和value
 			key, value = key[:i], key[i+1:]
 		}
-		key, err1 := QueryUnescape(key)
+		key, err1 := QueryUnescape(key) // unescape出原值key
 		if err1 != nil {
 			if err == nil {
 				err = err1
 			}
 			continue
 		}
-		value, err1 = QueryUnescape(value)
+		value, err1 = QueryUnescape(value) // unescape出原值value
 		if err1 != nil {
 			if err == nil {
 				err = err1
