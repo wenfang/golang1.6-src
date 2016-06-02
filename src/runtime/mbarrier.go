@@ -95,7 +95,7 @@ import (
 func gcmarkwb_m(slot *uintptr, ptr uintptr) {
 	if writeBarrier.needed { // 如果需要写屏障
 		if ptr != 0 && inheap(ptr) { // 对指针赋值，如果指针非空，并且ptr指向堆内地址，调用shade，将对象置灰
-			shade(ptr)
+			shade(ptr) // 将指针置灰
 		}
 	}
 }

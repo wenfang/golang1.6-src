@@ -517,7 +517,7 @@ type itab struct {
 	link   *itab
 	bad    int32
 	unused int32
-	fun    [1]uintptr // variable sized
+	fun    [1]uintptr // variable sized 函数列表，可变大小
 }
 
 // Lock-free stack node.

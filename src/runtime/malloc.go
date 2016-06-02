@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// 内存分配器，基于tcmalloc
 // Memory allocator, based on tcmalloc.
 // http://goog-perftools.sourceforge.net/doc/tcmalloc.html
 
 // The main allocator works in runs of pages.
+// 小的内存分配(32kB以内)被取整到size classes中，共有大约100多个size类。
+// 每个size类都有用于分配object的空闲列表
 // Small allocation sizes (up to and including 32 kB) are
 // rounded to one of about 100 size classes, each of which
 // has its own free list of objects of exactly that size.
@@ -121,7 +124,7 @@ const (
 	_NumSizeClasses = 67
 
 	// Tunable constants. SmallSize的界限，32K
-	_MaxSmallSize = 32 << 10
+	_MaxSmallSize = 32 << 10 // 32K
 
 	// Tiny allocator parameters, see "Tiny allocator" comment in malloc.go.
 	_TinySize      = 16

@@ -22,7 +22,7 @@ type finblock struct {
 
 var finlock mutex  // protects the following variables
 var fing *g        // goroutine that runs finalizers
-var finq *finblock // list of finalizers that are to be executed
+var finq *finblock // list of finalizers that are to be executed 将要执行的finalizers列表
 var finc *finblock // cache of free blocks
 var finptrmask [_FinBlockSize / sys.PtrSize / 8]byte
 var fingwait bool
@@ -135,13 +135,13 @@ var (
 
 func createfing() {
 	// start the finalizer goroutine exactly once
-	if fingCreate == 0 && atomic.Cas(&fingCreate, 0, 1) {
+	if fingCreate == 0 && atomic.Cas(&fingCreate, 0, 1) { // 只启动finalizer goroutine一次
 		go runfinq()
 	}
 }
 
 // This is the goroutine that runs all of the finalizers
-func runfinq() {
+func runfinq() { // 运行所有finalizers的goroutine
 	var (
 		frame    unsafe.Pointer
 		framecap uintptr
@@ -149,9 +149,9 @@ func runfinq() {
 
 	for {
 		lock(&finlock)
-		fb := finq
+		fb := finq // 取出finq队列
 		finq = nil
-		if fb == nil {
+		if fb == nil { // finq队列为空，等待
 			gp := getg()
 			fing = gp
 			fingwait = true
@@ -162,7 +162,7 @@ func runfinq() {
 		if raceenabled {
 			racefingo()
 		}
-		for fb != nil {
+		for fb != nil { // 如果finq队列不为空
 			for i := fb.cnt; i > 0; i-- {
 				f := &fb.fin[i-1]
 
@@ -265,7 +265,7 @@ func runfinq() {
 // A single goroutine runs all finalizers for a program, sequentially.
 // If a finalizer must run for a long time, it should do so by starting
 // a new goroutine.
-func SetFinalizer(obj interface{}, finalizer interface{}) {
+func SetFinalizer(obj interface{}, finalizer interface{}) { // 对obj设置finalizer
 	if debug.sbrk != 0 {
 		// debug.sbrk never frees memory, so no finalizers run
 		// (and we don't have the data structures to record them).
@@ -273,19 +273,19 @@ func SetFinalizer(obj interface{}, finalizer interface{}) {
 	}
 	e := efaceOf(&obj)
 	etyp := e._type
-	if etyp == nil {
+	if etyp == nil { // 对象为空，抛出异常
 		throw("runtime.SetFinalizer: first argument is nil")
 	}
-	if etyp.kind&kindMask != kindPtr {
+	if etyp.kind&kindMask != kindPtr { // 对象类型不是指针，抛出异常
 		throw("runtime.SetFinalizer: first argument is " + *etyp._string + ", not pointer")
 	}
-	ot := (*ptrtype)(unsafe.Pointer(etyp))
-	if ot.elem == nil {
+	ot := (*ptrtype)(unsafe.Pointer(etyp)) // 获取指针原始内容
+	if ot.elem == nil {                    // 指针指向空，抛出异常
 		throw("nil elem type!")
 	}
 
 	// find the containing object
-	_, base, _ := findObject(e.data)
+	_, base, _ := findObject(e.data) // 查找到obj所在的基地址
 
 	if base == nil {
 		// 0-length objects are okay.
@@ -380,9 +380,9 @@ okarg:
 // Look up pointer v in heap.  Return the span containing the object,
 // the start of the object, and the size of the object.  If the object
 // does not exist, return nil, nil, 0.
-func findObject(v unsafe.Pointer) (s *mspan, x unsafe.Pointer, n uintptr) {
-	c := gomcache()
-	c.local_nlookup++
+func findObject(v unsafe.Pointer) (s *mspan, x unsafe.Pointer, n uintptr) { // 在堆v中查找指针，返回包含该对象的span，对象的起始指针和对象的大小
+	c := gomcache()   // 返回当前goroutine的mcache结构
+	c.local_nlookup++ // 本地查找次数增加
 	if sys.PtrSize == 4 && c.local_nlookup >= 1<<30 {
 		// purge cache stats to prevent overflow
 		lock(&mheap_.lock)
@@ -393,12 +393,12 @@ func findObject(v unsafe.Pointer) (s *mspan, x unsafe.Pointer, n uintptr) {
 	// find span
 	arena_start := mheap_.arena_start
 	arena_used := mheap_.arena_used
-	if uintptr(v) < arena_start || uintptr(v) >= arena_used {
+	if uintptr(v) < arena_start || uintptr(v) >= arena_used { // 指针v不在范围内，返回
 		return
 	}
 	p := uintptr(v) >> pageShift
 	q := p - arena_start>>pageShift
-	s = *(**mspan)(add(unsafe.Pointer(mheap_.spans), q*sys.PtrSize))
+	s = *(**mspan)(add(unsafe.Pointer(mheap_.spans), q*sys.PtrSize)) // 查找到对应的mspan
 	if s == nil {
 		return
 	}

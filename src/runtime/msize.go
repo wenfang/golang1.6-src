@@ -46,8 +46,8 @@ package runtime
 // size divided by 128 (rounded up).  The arrays are filled in
 // by InitSizes.
 
-var class_to_size [_NumSizeClasses]int32        // 67个class_to_size数组
-var class_to_allocnpages [_NumSizeClasses]int32 // 67个class_to_allocnpages数组
+var class_to_size [_NumSizeClasses]int32        // 67个class_to_size数组，每类对应的大小
+var class_to_allocnpages [_NumSizeClasses]int32 // 67个class_to_allocnpages数组，每类对应要分配多少个page
 var class_to_divmagic [_NumSizeClasses]divMagic // 67个div魔数
 
 var size_to_class8 [1024/8 + 1]int8                     // 127个size_to_class8数组
@@ -55,7 +55,7 @@ var size_to_class128 [(_MaxSmallSize-1024)/128 + 1]int8 // 249个的size_to_clas
 
 func sizeToClass(size int32) int32 { // 传入size返回class
 	if size > _MaxSmallSize { // size class不能处理大于32K的size
-		throw("SizeToClass - invalid size")
+		throw("SizeToClass - invalid size") // 抛出异常
 	}
 	if size > 1024-8 { // 如果大于1016个字节，从size_to_class128数组取
 		return int32(size_to_class128[(size-1024+127)>>7]) // 按128个字节对齐
@@ -64,10 +64,10 @@ func sizeToClass(size int32) int32 { // 传入size返回class
 }
 
 func initSizes() {
-	// Initialize the runtime·class_to_size table (and choose class sizes in the process).
+	// Initialize the runtime·class_to_size table (and choose class sizes in the process). 初始化class_to_size table
 	class_to_size[0] = 0
 	sizeclass := 1 // 0 means no class
-	align := 8
+	align := 8     // 以8个字节为一个align
 	for size := align; size <= _MaxSmallSize; size += align {
 		if size&(size-1) == 0 { // bump alignment once in a while
 			if size >= 2048 {

@@ -23,7 +23,7 @@ type bitReader struct {
 
 // newBitReader returns a new bitReader reading from r. If r is not
 // already an io.ByteReader, it will be converted via a bufio.Reader.
-func newBitReader(r io.Reader) bitReader {
+func newBitReader(r io.Reader) bitReader { // 新创建一个bitreader
 	byter, ok := r.(io.ByteReader)
 	if !ok {
 		byter = bufio.NewReader(r)
