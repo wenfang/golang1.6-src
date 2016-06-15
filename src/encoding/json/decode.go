@@ -246,7 +246,7 @@ func isValidNumber(s string) bool {
 }
 
 // decodeState represents the state while decoding a JSON value.
-type decodeState struct {
+type decodeState struct { // 解码状态结构
 	data       []byte
 	off        int // read offset in data
 	scan       scanner

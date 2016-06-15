@@ -19,7 +19,7 @@ import "errors"
 //   []byte
 //   string   [*] everywhere except from Rows.Next.
 //   time.Time
-type Value interface{}
+type Value interface{} // 值得类型
 
 // Driver is the interface that must be implemented by a database
 // driver.
@@ -107,7 +107,7 @@ type Result interface {
 
 	// RowsAffected returns the number of rows affected by the
 	// query.
-	RowsAffected() (int64, error)
+	RowsAffected() (int64, error) // 返回影响的行数
 }
 
 // Stmt is a prepared statement. It is bound to a Conn and not

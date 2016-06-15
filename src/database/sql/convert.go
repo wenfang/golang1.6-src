@@ -83,7 +83,7 @@ func driverArgs(ds *driverStmt, args []interface{}) ([]driver.Value, error) {
 // convertAssign copies to dest the value in src, converting it if possible.
 // An error is returned if the copy would result in loss of information.
 // dest should be a pointer type.
-func convertAssign(dest, src interface{}) error {
+func convertAssign(dest, src interface{}) error { // 将源类型转换为目标类型
 	// Common cases, without reflect.
 	switch s := src.(type) { // 解析源类型
 	case string:

@@ -169,11 +169,11 @@ type NullBool struct { // 代表值可能为空的布尔值
 
 // Scan implements the Scanner interface.
 func (n *NullBool) Scan(value interface{}) error {
-	if value == nil {
+	if value == nil { // 如果Value为空，值是无效的
 		n.Bool, n.Valid = false, false
 		return nil
 	}
-	n.Valid = true
+	n.Valid = true // 值是有效的
 	return convertAssign(&n.Bool, value)
 }
 
