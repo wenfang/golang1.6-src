@@ -75,7 +75,7 @@ func (p *Pool) Put(x interface{}) { // 将对象加入pool中
 		x = nil
 	}
 	runtime_procUnpin()
-	if x == nil {
+	if x == nil { // 加入private成功，直接返回
 		return
 	}
 	l.Lock()
@@ -107,12 +107,12 @@ func (p *Pool) Get() interface{} { // 从Pool中获取一个元素
 	}
 	l.Lock()                  // private部分没有了，从shared部分获取，需要加锁
 	last := len(l.shared) - 1 // 如果没有private从共享部分获得元素
-	if last >= 0 {
-		x = l.shared[last]
+	if last >= 0 {            // 共享部分有元素
+		x = l.shared[last] // 取出来共享部分的元素
 		l.shared = l.shared[:last]
 	}
 	l.Unlock()
-	if x != nil {
+	if x != nil { // 如果取到了元素返回
 		return x
 	}
 	return p.getSlow()
