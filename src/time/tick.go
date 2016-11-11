@@ -32,7 +32,7 @@ func NewTicker(d Duration) *Ticker { // 新创建一个Ticker
 		r: runtimeTimer{ // 初始化runtimeTimer结构
 			when:   when(d),  // 何时到期
 			period: int64(d), // 周期性运行
-			f:      sendTime,
+			f:      sendTime, // 到期后执行sendTime
 			arg:    c,
 		},
 	}

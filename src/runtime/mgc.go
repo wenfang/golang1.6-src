@@ -8,7 +8,7 @@
 // Garbage collector (GC).
 //
 // GC和用户线程并发执行，是类型精确的，允许多个GC线程并行执行。gc使用写屏障进行并发的mark和sweep。
-// 这个gc算法是non-generational和non-compactiong的。
+// 这个gc算法是non-generational和non-compacting的。
 // The GC runs concurrently with mutator threads, is type accurate (aka precise), allows multiple
 // GC thread to run in parallel. It is a concurrent mark and sweep that uses a write barrier. It is
 // non-generational and non-compacting. Allocation is done using size segregated per P allocation
@@ -33,7 +33,7 @@
 //  1. Wait for all P's to acknowledge phase change.
 //         At this point all goroutines have passed through a GC safepoint and
 //         know we are in the GCscan phase.
-//  2. gc scan所有goroutine的栈,标记并且排队所有碰到的指针(标记避免大部分重复排队)
+//  2. gc scan所有goroutine的栈,标记并且排队所有碰到的指针(标记避免大部分重复排队,但是竞争可能会导致良态的重复)
 //  2. GC scans all goroutine stacks, mark and enqueues all encountered pointers
 //       (marking avoids most duplicate enqueuing but races may produce benign duplication).
 //       Preempted goroutines are scanned before P schedules next goroutine.
@@ -46,14 +46,14 @@
 //       Malloc still allocates white (non-marked) objects.
 //  6. 同时gc依次遍历堆，标记可到达的对象
 //  6. Meanwhile GC transitively walks the heap marking reachable objects.
-//  7. 当GC标记完堆
+//  7. 当GC标记完堆，他一个一个的获取P
 //  7. When GC finishes marking heap, it preempts P's one-by-one and
 //       retakes partial wbufs (filled by write barrier or during a stack scan of the goroutine
 //       currently scheduled on the P).
 //  8. 一旦GC完成了所有标记工作，把状态设置为marktermination
 //  8. Once the GC has exhausted all available marking work it sets phase = marktermination.
 //  9. Wait for all P's to acknowledge phase change.
-// 10. 这时gc开始分配黑对象，因此未标记可到达的对象的数量，单调递减
+// 10. 这时malloc开始分配黑对象，因此未标记可到达的对象的数量，单调递减
 // 10. Malloc now allocates black objects, so number of unmarked reachable objects
 //        monotonically decreases.
 // 11. gc标记所有未标记仍可访问的对象
@@ -67,11 +67,13 @@
 // 14. malloc开始分配白对象
 // 14. Now malloc allocates white (but sweeps spans before use).
 //         Write barrier becomes nop.
-// 15. GC开始执行后台sweeping
+// 15. GC开始执行后台sweeping，参加下面的描述
 // 15. GC does background sweeping, see description below.
+// 16. 当发生了足够多的分配，重新回到0执行一遍，参加下面对GC rate的讨论
 // 16. When sufficient allocation has taken place replay the sequence starting at 0 above,
 //         see discussion of GC rate below.
 
+// 改变阶段
 // Changing phases.
 // Phases are changed by setting the gcphase to the next phase and possibly calling ackgcphase.
 // All phase action must be benign in the presence of a change.
@@ -79,12 +81,13 @@
 // Starting with GCoff
 // GCoff阶段到GCscan阶段
 // GCoff to GCscan
-//		 GCsan查找栈和全局变量，并将他们置灰，但是永远不会将对象变黑。一旦所有的P感知到了新阶段
-//		 他们将开始scan goroutine.这就意味着只有所有的P同意后才能开始scan。
+//	   GCsan查找栈和全局变量，并将他们置灰，但是永远不会将对象变黑。一旦所有的P感知到了新阶段
+//	   他们将开始scan goroutine.这就意味着只有所有的P同意后才能开始抢占式的scan goroutine。
 //     GSscan scans stacks and globals greying them and never marks an object black.
 //     Once all the P's are aware of the new phase they will scan gs on preemption.
 //     This means that the scanning of preempted gs can't start until all the Ps
 //     have acknowledged.
+//	   当一个栈被scan时，这个阶段会给栈安装stack barriers，用来track这个栈有多少被激活
 //     When a stack is scanned, this phase also installs stack barriers to
 //     track how much of the stack has been active.
 //     This transition enables write barriers because stack barriers
@@ -92,13 +95,14 @@
 //     barriers. Technically this only needs write barriers for writes
 //     to stack slots, but we enable write barriers in general.
 // GCscan to GCmark
-//		 在GCmark阶段，如果work buffer没有被scan的指针了，drain掉该work buffer
+//	   在GCmark阶段，如果work buffer没有被scan的指针了，drain掉该work buffer
 //     In GCmark, work buffers are drained until there are no more
 //     pointers to scan.
 //     No scanning of objects (making them black) can happen until all
 //     Ps have enabled the write barrier, but that already happened in
 //     the transition to GCscan.
 // GCmark to GCmarktermination
+//	   这里仅有的变化是，我们开始分配黑对象，因此所有的P必须确认该阶段，在我们开始结束算法前
 //     The only change here is that we start allocating black so the Ps must acknowledge
 //     the change before we begin the termination algorithm
 // GCmarktermination to GSsweep
@@ -133,9 +137,9 @@
 // The finalizer goroutine is kicked off only when all spans are swept.
 // When the next GC starts, it sweeps all not-yet-swept spans (if any).
 
-// GC速率
+// GC rate比率
 // 在分配正比于当前使用内存大小的内存后，开始启动下次gc。这个比例由GOGC环境变量控制，缺省值
-// 为100。
+// 为100。如果GOGC=100并且我们现在使用的大小是4M，那么当内存达到8M时会进行GC。
 // GC rate.
 // Next GC is after we've allocated an extra amount of memory proportional to
 // the amount already in use. The proportion is controlled by GOGC environment variable
@@ -882,11 +886,12 @@ func GC() {
 	gcStart(gcForceBlockMode, false)
 }
 
+// gcMode指示gc模式
 // gcMode indicates how concurrent a GC cycle should be.
 type gcMode int
 
 const (
-	gcBackgroundMode gcMode = iota // concurrent GC and sweep
+	gcBackgroundMode gcMode = iota // concurrent GC and sweep 并发的GC和sweep
 	gcForceMode                    // stop-the-world GC now, concurrent sweep
 	gcForceBlockMode               // stop-the-world GC now and STW sweep
 )

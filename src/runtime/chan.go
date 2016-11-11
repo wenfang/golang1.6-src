@@ -25,14 +25,14 @@ const (
 type hchan struct { // chan的内部类型
 	qcount   uint           // total data in the queue 队列中全部元素的数量
 	dataqsiz uint           // size of the circular queue 循环队列的大小
-	buf      unsafe.Pointer // points to an array of dataqsiz elements
+	buf      unsafe.Pointer // points to an array of dataqsiz elements 指向队列的指针
 	elemsize uint16         // 元素大小
-	closed   uint32
-	elemtype *_type // element type 元素类型
-	sendx    uint   // send index 发送索引
-	recvx    uint   // receive index 接收索引
-	recvq    waitq  // list of recv waiters
-	sendq    waitq  // list of send waiters
+	closed   uint32         // 是否已被关闭
+	elemtype *_type         // element type 元素类型
+	sendx    uint           // send index 发送索引
+	recvx    uint           // receive index 接收索引
+	recvq    waitq          // list of recv waiters 接收者等待队列
+	sendq    waitq          // list of send waiters 发送者等待队列
 	lock     mutex
 }
 
@@ -125,8 +125,8 @@ func chansend(t *chantype, c *hchan, ep unsafe.Pointer, block bool, callerpc uin
 		if !block { // 如果不能阻塞，返回false，select探测时使用
 			return false
 		}
-		gopark(nil, nil, "chan send (nil chan)", traceEvGoStop, 2) // 向空chan发送，阻塞在这里
-		throw("unreachable")
+		gopark(nil, nil, "chan send (nil chan)", traceEvGoStop, 2) // 向空chan发送，阻塞在这里，永远阻塞
+		throw("unreachable")                                       // 不可能执行到这里
 	}
 
 	if debugChan {
@@ -151,7 +151,7 @@ func chansend(t *chantype, c *hchan, ep unsafe.Pointer, block bool, callerpc uin
 	// It is okay if the reads are reordered here: if we observe that the channel is not
 	// ready for sending and then observe that it is not closed, that implies that the
 	// channel wasn't closed during the first observation.
-	if !block && c.closed == 0 && ((c.dataqsiz == 0 && c.recvq.first == nil) ||
+	if !block && c.closed == 0 && ((c.dataqsiz == 0 && c.recvq.first == nil) || // 无buffer的chan，但是没有接收者
 		(c.dataqsiz > 0 && c.qcount == c.dataqsiz)) { // 如果是非阻塞操作，且当前的chan没有被关闭，当前没有空间容纳，迅速返回false
 		return false
 	}
@@ -165,7 +165,7 @@ func chansend(t *chantype, c *hchan, ep unsafe.Pointer, block bool, callerpc uin
 
 	if c.closed != 0 { // 如果chan已经关闭panic
 		unlock(&c.lock)
-		panic("send on closed channel")
+		panic("send on closed channel") // 不允许向已经关闭的chan发送数据
 	}
 
 	if sg := c.recvq.dequeue(); sg != nil {

@@ -211,7 +211,7 @@ func Callers(skip int, pc []uintptr) int {
 // GOROOT returns the root of the Go tree.
 // It uses the GOROOT environment variable, if set,
 // or else the root used during the Go build.
-func GOROOT() string {
+func GOROOT() string { // 获取GOROOT环境变量
 	s := gogetenv("GOROOT")
 	if s != "" {
 		return s
@@ -222,7 +222,7 @@ func GOROOT() string {
 // Version returns the Go tree's version string.
 // It is either the commit hash and date at the time of the build or,
 // when possible, a release tag like "go1.3".
-func Version() string {
+func Version() string { // 获取当前的版本号
 	return sys.TheVersion
 }
 

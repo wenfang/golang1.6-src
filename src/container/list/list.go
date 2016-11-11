@@ -47,7 +47,7 @@ func (e *Element) Prev() *Element { // 选择element所在列表中的前一个�
 // The zero value for List is an empty list ready to use.
 type List struct {
 	root Element // sentinel list element, only &root, root.prev, and root.next are used 根元素Value不使用，只用作占位
-	len  int     // current list length excluding (this) sentinel element
+	len  int     // current list length excluding (this) sentinel element 当前元素的个数
 }
 
 // Init initializes or clears list l.

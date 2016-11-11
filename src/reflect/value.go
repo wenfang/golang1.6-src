@@ -13,6 +13,7 @@ import (
 const ptrSize = 4 << (^uintptr(0) >> 63) // unsafe.Sizeof(uintptr(0)) but an ideal const
 const cannotSet = "cannot set value obtained from unexported struct field"
 
+// Value结构是Go值得反射接口
 // Value is the reflection interface to a Go value.
 //
 // Not all methods apply to all kinds of values.  Restrictions,
@@ -1902,6 +1903,7 @@ const (
 	SelectDefault           // default
 )
 
+// SelectCase结构描述了select操作中的单个case
 // A SelectCase describes a single case in a select operation.
 // The kind of case depends on Dir, the communication direction.
 //
@@ -2081,7 +2083,7 @@ func Indirect(v Value) Value {
 
 // ValueOf returns a new Value initialized to the concrete value
 // stored in the interface i.  ValueOf(nil) returns the zero Value.
-func ValueOf(i interface{}) Value {
+func ValueOf(i interface{}) Value { // 返回一个Value
 	if i == nil {
 		return Value{}
 	}

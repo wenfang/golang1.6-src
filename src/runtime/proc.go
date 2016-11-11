@@ -12,18 +12,24 @@ import (
 
 var buildVersion = sys.TheVersion
 
+// 调度器的任务是将待执行的goroutine分配到工作线程上
 // Goroutine scheduler
 // The scheduler's job is to distribute ready-to-run goroutines over worker threads.
 //
+// 主要概念包含
 // The main concepts are:
 // G - goroutine.
 // M - worker thread, or machine. 工作线程
 // P - processor, a resource that is required to execute Go code. 为执行Go代码而需要的资源
-//     M must have an associated P to execute Go code, however it can be
+//     M must have an associated P to execute Go code, however it can be  为执行Go代码，M必须有一个与其相关的P
 //     blocked or in a syscall w/o an associated P.
 //
 // Design doc at https://golang.org/s/go11sched.
 
+// 工作线程的parking/unparking
+// 保持足够的工作线程来充分的运用硬件的并行能力，同时回收多余的工作线程，已节约CPU资源和电力，
+// 我们需要在这两者间进行权衡。达到这点可不简单，主要有以下两点原因
+//
 // Worker thread parking/unparking.
 // We need to balance between keeping enough running worker threads to utilize
 // available hardware parallelism and parking excessive running worker threads
@@ -45,6 +51,8 @@ var buildVersion = sys.TheVersion
 //    idle P, but don't do handoff. This would lead to excessive thread parking/
 //    unparking as the additional threads will instantly park without discovering
 //    any work to do.
+//
+// 当前的方法：
 //
 // The current approach:
 // We unpark an additional thread when we ready a goroutine if (1) there is an
@@ -985,7 +993,7 @@ func startTheWorldWithSema() {
 	_g_ := getg()
 
 	_g_.m.locks++        // disable preemption because it can be holding p in a local var
-	gp := netpoll(false) // non-blocking
+	gp := netpoll(false) // non-blocking 非阻塞模式，执行一下netpoll，返回goroutine的列表
 	injectglist(gp)
 	add := needaddgcproc()
 	lock(&sched.lock)
@@ -2645,6 +2653,7 @@ func malg(stacksize int32) *g {
 	return newg
 }
 
+// 创建一个新的goroutine运行fn，siz为参数的大小。
 // Create a new g running fn with siz bytes of arguments.
 // Put it on the queue of g's waiting to run.
 // The compiler turns a go statement into a call to this.
@@ -2665,9 +2674,9 @@ func newproc(siz int32, fn *funcval) {
 // address of the go statement that created this.  The new g is put
 // on the queue of g's waiting to run.
 func newproc1(fn *funcval, argp *uint8, narg int32, nret int32, callerpc uintptr) *g {
-	_g_ := getg()
+	_g_ := getg() // 返回当前goroutine
 
-	if fn == nil {
+	if fn == nil { // fn没有指定，抛出异常
 		_g_.m.throwing = -1 // do not dump full stacks
 		throw("go of nil func value")
 	}
@@ -2683,8 +2692,8 @@ func newproc1(fn *funcval, argp *uint8, narg int32, nret int32, callerpc uintptr
 		throw("newproc: function arguments too large for new goroutine")
 	}
 
-	_p_ := _g_.m.p.ptr()
-	newg := gfget(_p_)
+	_p_ := _g_.m.p.ptr() // 获得当前的P
+	newg := gfget(_p_)   // 获得空闲的goroutine结构
 	if newg == nil {
 		newg = malg(_StackMin)
 		casgstatus(newg, _Gidle, _Gdead)
@@ -2711,7 +2720,7 @@ func newproc1(fn *funcval, argp *uint8, narg int32, nret int32, callerpc uintptr
 	memmove(unsafe.Pointer(spArg), unsafe.Pointer(argp), uintptr(narg))
 
 	memclr(unsafe.Pointer(&newg.sched), unsafe.Sizeof(newg.sched))
-	newg.sched.sp = sp
+	newg.sched.sp = sp // 设置栈
 	newg.stktopsp = sp
 	newg.sched.pc = funcPC(goexit) + sys.PCQuantum // +PCQuantum so that previous instruction is in same function
 	newg.sched.g = guintptr(unsafe.Pointer(newg))
@@ -2739,7 +2748,7 @@ func newproc1(fn *funcval, argp *uint8, narg int32, nret int32, callerpc uintptr
 	if trace.enabled {
 		traceGoCreate(newg, newg.startpc)
 	}
-	runqput(_p_, newg, true)
+	runqput(_p_, newg, true) // 将新创建的goroutine放入P中排队
 
 	if atomic.Load(&sched.npidle) != 0 && atomic.Load(&sched.nmspinning) == 0 && unsafe.Pointer(fn.fn) != unsafe.Pointer(funcPC(main)) { // TODO: fast atomic
 		wakep()
@@ -3877,6 +3886,10 @@ func runqempty(_p_ *p) bool {
 // assumptions.
 const randomizeScheduler = raceenabled
 
+// runqput尝试将g放入本地的可运行队列。
+// 如果next为false，runqput将g加入可运行队列的尾部
+// 如果next为true，runqput将g放入_p_.runnext slot中
+// 如果运行队列已满，runnext将g放入全局队列
 // runqput tries to put g on the local runnable queue.
 // If next if false, runqput adds g to the tail of the runnable queue.
 // If next is true, runqput puts g in the _p_.runnext slot.
@@ -3887,17 +3900,17 @@ func runqput(_p_ *p, gp *g, next bool) {
 		next = false
 	}
 
-	if next {
+	if next { // 如果next为true
 	retryNext:
-		oldnext := _p_.runnext
-		if !_p_.runnext.cas(oldnext, guintptr(unsafe.Pointer(gp))) {
+		oldnext := _p_.runnext                                       // 取出上一个runnext的值
+		if !_p_.runnext.cas(oldnext, guintptr(unsafe.Pointer(gp))) { // 尝试将gp放入runnext，如果失败，一直重复
 			goto retryNext
 		}
-		if oldnext == 0 {
+		if oldnext == 0 { // 没有上一个runnext，返回
 			return
 		}
 		// Kick the old runnext out to the regular run queue.
-		gp = oldnext.ptr()
+		gp = oldnext.ptr() // 现在gp变成了上一个runnext
 	}
 
 retry:
@@ -3957,11 +3970,11 @@ func runqputslow(_p_ *p, gp *g, h, t uint32) bool {
 // If inheritTime is true, gp should inherit the remaining time in the
 // current time slice. Otherwise, it should start a new time slice.
 // Executed only by the owner P.
-func runqget(_p_ *p) (gp *g, inheritTime bool) {
-	// If there's a runnext, it's the next G to run.
+func runqget(_p_ *p) (gp *g, inheritTime bool) { // 从本地运行队列中获取一个goroutine执行
+	// If there's a runnext, it's the next G to run. 如果有runnext，它就是下一个要执行的goroutine
 	for {
 		next := _p_.runnext
-		if next == 0 {
+		if next == 0 { // 没有设置runnext
 			break
 		}
 		if _p_.runnext.cas(next, 0) {

@@ -159,7 +159,7 @@ var stackLarge struct {
 var framepointer_enabled bool
 
 func stackinit() { // 初始化栈
-	if _StackCacheSize&_PageMask != 0 {
+	if _StackCacheSize&_PageMask != 0 { // 栈大小
 		throw("cache size must be a multiple of page size")
 	}
 	for i := range stackpool {
@@ -171,7 +171,7 @@ func stackinit() { // 初始化栈
 }
 
 // stacklog2 returns ⌊log_2(n)⌋.
-func stacklog2(n uintptr) int {
+func stacklog2(n uintptr) int { // 返回n的值得log2的下取整
 	log2 := 0
 	for n > 1 {
 		n >>= 1
@@ -183,7 +183,7 @@ func stacklog2(n uintptr) int {
 // Allocates a stack from the free pool.  Must be called with
 // stackpoolmu held.
 func stackpoolalloc(order uint8) gclinkptr {
-	list := &stackpool[order]
+	list := &stackpool[order] // 对对应order的stackpool获取一个栈
 	s := list.first
 	if s == nil {
 		// no free stacks.  Allocate another span worth.
@@ -721,7 +721,7 @@ func adjuststkbar(gp *g, adjinfo *adjustinfo) {
 	}
 }
 
-func fillstack(stk stack, b byte) {
+func fillstack(stk stack, b byte) { // 填充栈
 	for p := stk.lo; p < stk.hi; p++ {
 		*(*byte)(unsafe.Pointer(p)) = b
 	}
@@ -733,18 +733,18 @@ func copystack(gp *g, newsize uintptr) {
 	if gp.syscallsp != 0 { // 在系统调用中不能进行栈增长
 		throw("stack growth not allowed in system call")
 	}
-	old := gp.stack
+	old := gp.stack // 获得goroutine当前的栈
 	if old.lo == 0 {
 		throw("nil stackbase")
 	}
-	used := old.hi - gp.sched.sp
+	used := old.hi - gp.sched.sp // 获取当前栈的使用大小
 
 	// allocate new stack
-	new, newstkbar := stackalloc(uint32(newsize))
+	new, newstkbar := stackalloc(uint32(newsize)) // 分配新栈
 	if stackPoisonCopy != 0 {
 		fillstack(new, 0xfd)
 	}
-	if stackDebug >= 1 {
+	if stackDebug >= 1 { // 开启了栈调试
 		print("copystack gp=", gp, " [", hex(old.lo), " ", hex(old.hi-used), " ", hex(old.hi), "]/", gp.stackAlloc, " -> [", hex(new.lo), " ", hex(new.hi-used), " ", hex(new.hi), "]/", newsize, "\n")
 	}
 
@@ -752,10 +752,10 @@ func copystack(gp *g, newsize uintptr) {
 	// one in progress.
 	gcLockStackBarriers(gp)
 
-	// adjust pointers in the to-be-copied frames
+	// adjust pointers in the to-be-copied frames 矫正待拷贝的栈中的指针
 	var adjinfo adjustinfo
-	adjinfo.old = old
-	adjinfo.delta = new.hi - old.hi
+	adjinfo.old = old               // 老的栈
+	adjinfo.delta = new.hi - old.hi // 获得老栈与新栈的地址偏移
 	gentraceback(^uintptr(0), ^uintptr(0), 0, gp, 0, nil, 0x7fffffff, adjustframe, noescape(unsafe.Pointer(&adjinfo)), 0)
 
 	// adjust other miscellaneous things that have pointers into stacks.
@@ -769,17 +769,17 @@ func copystack(gp *g, newsize uintptr) {
 	if stackPoisonCopy != 0 {
 		fillstack(new, 0xfb)
 	}
-	memmove(unsafe.Pointer(new.hi-used), unsafe.Pointer(old.hi-used), used)
+	memmove(unsafe.Pointer(new.hi-used), unsafe.Pointer(old.hi-used), used) // 拷贝栈的内容到新的位置
 
 	// copy old stack barriers to new stack barrier array
 	newstkbar = newstkbar[:len(gp.stkbar)]
 	copy(newstkbar, gp.stkbar)
 
-	// Swap out old stack for new one
+	// Swap out old stack for new one 交换新栈和老栈
 	gp.stack = new
 	gp.stackguard0 = new.lo + _StackGuard // NOTE: might clobber a preempt request
 	gp.sched.sp = new.hi - used
-	oldsize := gp.stackAlloc
+	oldsize := gp.stackAlloc // 获得老的栈已经分配的大小
 	gp.stackAlloc = newsize
 	gp.stkbar = newstkbar
 	gp.stktopsp += adjinfo.delta
@@ -790,7 +790,7 @@ func copystack(gp *g, newsize uintptr) {
 	if stackPoisonCopy != 0 {
 		fillstack(old, 0xfc)
 	}
-	stackfree(old, oldsize)
+	stackfree(old, oldsize) // 释放老的栈
 }
 
 // round x up to a power of 2.
@@ -971,7 +971,7 @@ func gostartcallfn(gobuf *gobuf, fv *funcval) {
 
 // Maybe shrink the stack being used by gp.
 // Called at garbage collection time.
-func shrinkstack(gp *g) {
+func shrinkstack(gp *g) { // 收缩被gp所使用的栈
 	if readgstatus(gp) == _Gdead {
 		if gp.stack.lo != 0 {
 			// Free whole stack - it will get reallocated

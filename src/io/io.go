@@ -21,7 +21,7 @@ import (
 var ErrShortWrite = errors.New("short write") // 写的数据比要求写的数据少
 
 // ErrShortBuffer means that a read required a longer buffer than was provided.
-var ErrShortBuffer = errors.New("short buffer")
+var ErrShortBuffer = errors.New("short buffer") // buffer 空间小
 
 // EOF is the error returned by Read when no more input is available.
 // Functions should return EOF only to signal a graceful end of input.

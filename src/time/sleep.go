@@ -14,7 +14,7 @@ func runtimeNano() int64 // 以纳秒的形式返回当前的运行时时钟
 // Interface to timers implemented in package runtime.
 // Must be in sync with ../runtime/runtime.h:/^struct.Timer$
 type runtimeTimer struct { // 创建一个运行时timer结构，和runtime中的Timer结构相同
-	i      int
+	i      int                        // heap堆索引
 	when   int64                      // timer何时到期
 	period int64                      // 间隔多长时间，周期性
 	f      func(interface{}, uintptr) // NOTE: must not be closure 不能是闭包
@@ -54,7 +54,7 @@ type Timer struct { // 定时器结构
 // expired or been stopped.
 // Stop does not close the channel, to prevent a read from the channel succeeding
 // incorrectly.
-func (t *Timer) Stop() bool {
+func (t *Timer) Stop() bool { // 停止Timer的执行
 	if t.r.f == nil {
 		panic("time: Stop called on uninitialized Timer")
 	}
@@ -80,18 +80,18 @@ func NewTimer(d Duration) *Timer { // 创建一个新的定时器，到期后向
 // Reset changes the timer to expire after duration d.
 // It returns true if the timer had been active, false if the timer had
 // expired or been stopped.
-func (t *Timer) Reset(d Duration) bool { // 重置定时器，d时间后生效
-	if t.r.f == nil {
+func (t *Timer) Reset(d Duration) bool { // 重置定时器，d时间后生效，如果timer已经被激活返回true，如果timer过期或停止了返回false
+	if t.r.f == nil { // 如果timer未初始化panic
 		panic("time: Reset called on uninitialized Timer")
 	}
-	w := when(d)
-	active := stopTimer(&t.r)
-	t.r.when = w // 设置新时间
-	startTimer(&t.r)
+	w := when(d)              // 何时执行
+	active := stopTimer(&t.r) // 停止定时器
+	t.r.when = w              // 设置新时间
+	startTimer(&t.r)          // 重新启动定时器
 	return active
 }
 
-func sendTime(c interface{}, seq uintptr) {
+func sendTime(c interface{}, seq uintptr) { // 非阻塞的向channel中发送当前时间
 	// Non-blocking send of time on c.
 	// Used in NewTimer, it cannot block anyway (buffer).
 	// Used in NewTicker, dropping sends on the floor is
@@ -116,8 +116,8 @@ func After(d Duration) <-chan Time { // 新创建一个定时器，返回其chan
 func AfterFunc(d Duration, f func()) *Timer { // 到时间后执行函数f
 	t := &Timer{ // 新创建一个Timer
 		r: runtimeTimer{
-			when: when(d),
-			f:    goFunc, // 到时后执行goFunc，参数为f
+			when: when(d), // 只在d时间执行1次
+			f:    goFunc,  // 到时后执行goFunc，参数为f
 			arg:  f,
 		},
 	}

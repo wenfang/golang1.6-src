@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// runtimeNano返回运行时时钟的当前值，纳秒
 // runtimeNano returns the current value of the runtime clock in nanoseconds.
 func runtimeNano() int64
 
@@ -41,7 +42,7 @@ func (pd *pollDesc) Init(fd *netFD) error { // 初始化pollDesc
 }
 
 func (pd *pollDesc) Close() { // 关闭pollDesc
-	if pd.runtimeCtx == 0 {
+	if pd.runtimeCtx == 0 { // 如果底层的PollDesc结构为0，直接返回
 		return
 	}
 	runtime_pollClose(pd.runtimeCtx) // 关闭runtime的PollDesc
@@ -50,7 +51,7 @@ func (pd *pollDesc) Close() { // 关闭pollDesc
 
 // Evict evicts fd from the pending list, unblocking any I/O running on fd.
 func (pd *pollDesc) Evict() { // 从pending列表中移除fd
-	if pd.runtimeCtx == 0 {
+	if pd.runtimeCtx == 0 { // 如果底层的PollDesc结构为0，直接返回
 		return
 	}
 	runtime_pollUnblock(pd.runtimeCtx)
@@ -104,7 +105,7 @@ func convertErr(res int) error { // 根据错误类型进行转换，或者无�
 		return errTimeout // 超时错误
 	}
 	println("unreachable: ", res) // 错误号无效panic
-	panic("unreachable")
+	panic("unreachable")          // 不应该执行到这里
 }
 
 func (fd *netFD) setDeadline(t time.Time) error { // 设置读写超时Deadline时间
@@ -121,10 +122,10 @@ func (fd *netFD) setWriteDeadline(t time.Time) error { // 设置写超时时间
 
 func setDeadlineImpl(fd *netFD, t time.Time, mode int) error { // 最后都需要调用的超时设置
 	d := runtimeNano() + int64(t.Sub(time.Now())) // 获得超时的绝对时间
-	if t.IsZero() {
+	if t.IsZero() {                               // 如果时间t为0，设置值d为0
 		d = 0
 	}
-	if err := fd.incref(); err != nil {
+	if err := fd.incref(); err != nil { // 增加文件引用计数
 		return err
 	}
 	runtime_pollSetDeadline(fd.pd.runtimeCtx, d, mode) // 设置超时触发器

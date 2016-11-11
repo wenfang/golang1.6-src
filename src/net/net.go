@@ -143,17 +143,17 @@ type Conn interface { // 面向流的网络接口
 	// the deadline after successful Read or Write calls.
 	//
 	// A zero value for t means I/O operations will not time out.
-	SetDeadline(t time.Time) error // 设置超时
+	SetDeadline(t time.Time) error // 设置读写deadline
 
 	// SetReadDeadline sets the deadline for future Read calls.
 	// A zero value for t means Read will not time out.
-	SetReadDeadline(t time.Time) error // 设置读超时
+	SetReadDeadline(t time.Time) error // 设置读deadline
 
 	// SetWriteDeadline sets the deadline for future Write calls.
 	// Even if write times out, it may return n > 0, indicating that
 	// some of the data was successfully written.
 	// A zero value for t means Write will not time out.
-	SetWriteDeadline(t time.Time) error // 设置写超时
+	SetWriteDeadline(t time.Time) error // 设置写deadline
 }
 
 type conn struct { // 代表网络连接
@@ -232,7 +232,7 @@ func (c *conn) SetDeadline(t time.Time) error { // 设置超时时间
 }
 
 // SetReadDeadline implements the Conn SetReadDeadline method.
-func (c *conn) SetReadDeadline(t time.Time) error { // 设置读超时时间
+func (c *conn) SetReadDeadline(t time.Time) error { // 设置读deadline
 	if !c.ok() {
 		return syscall.EINVAL
 	}
@@ -243,7 +243,7 @@ func (c *conn) SetReadDeadline(t time.Time) error { // 设置读超时时间
 }
 
 // SetWriteDeadline implements the Conn SetWriteDeadline method.
-func (c *conn) SetWriteDeadline(t time.Time) error { // 设置写超时时间
+func (c *conn) SetWriteDeadline(t time.Time) error { // 设置写deadline
 	if !c.ok() {
 		return syscall.EINVAL
 	}

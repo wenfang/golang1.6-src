@@ -7,11 +7,12 @@ package hash
 
 import "io"
 
+// Hash是被所有hash函数实现的通用接口
 // Hash is the common interface implemented by all hash functions.
 type Hash interface { //Hash接口
 	// Write (via the embedded io.Writer interface) adds more data to the running hash.
 	// It never returns an error.
-	io.Writer // 包含io.Wirter接口
+	io.Writer // 包含io.Wirter接口，加入数据
 
 	// Sum appends the current hash to b and returns the resulting slice.
 	// It does not change the underlying hash state.

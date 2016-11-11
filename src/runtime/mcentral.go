@@ -23,7 +23,7 @@ type mcentral struct { // 给定大小的空闲对象
 }
 
 // Initialize a single central free list.
-func (c *mcentral) init(sizeclass int32) {
+func (c *mcentral) init(sizeclass int32) { // 初始化单个mcentral空闲列表
 	c.sizeclass = sizeclass
 	c.nonempty.init()
 	c.empty.init()

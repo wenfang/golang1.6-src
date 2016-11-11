@@ -10,7 +10,7 @@ package strings
 // Compare is included only for symmetry with package bytes.
 // It is usually clearer and always faster to use the built-in
 // string comparison operators ==, <, >, and so on.
-func Compare(a, b string) int {
+func Compare(a, b string) int { // 比较两个字符串
 	// NOTE(rsc): This function does NOT call the runtime cmpstring function,
 	// because we do not want to provide any performance justification for
 	// using strings.Compare. Basically no one should use strings.Compare.

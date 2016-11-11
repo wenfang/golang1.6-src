@@ -161,6 +161,7 @@ func init() {
 	deferType = (*(**ptrtype)(unsafe.Pointer(&x))).elem
 }
 
+// 分配一个Defer
 // Allocate a Defer, usually using per-P pool.
 // Each defer must be released with freedefer.
 // Note: runs on g0 stack
@@ -189,7 +190,7 @@ func newdefer(siz int32) *_defer { // 分配新的defer结构
 	if d == nil { // 如果分配得到的defer结构为nil
 		// Allocate new defer+args.
 		total := roundupsize(totaldefersize(uintptr(siz)))
-		d = (*_defer)(mallocgc(total, deferType, 0))
+		d = (*_defer)(mallocgc(total, deferType, 0)) // 分配一个defer结构
 	}
 	d.siz = siz        // 设置参数大小为siz
 	gp := mp.curg      // 获取当前的goroutine

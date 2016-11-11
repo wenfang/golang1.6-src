@@ -21,7 +21,7 @@
 // 分配的堆内存来自于一段内存的子集[start, used)，对每个指针大小的word，堆位图中
 // 对应2个bit，存储在start位置之前。也就是说在地址start-1的字节，保存了从start到
 // start+3*ptrSize内存的情况,start-2的字节保存start+4*ptrSize到start+7*ptrSize的内存
-// 情况
+// 情况，等等。
 // The allocated heap comes from a subset of the memory in the range [start, used),
 // where start == mheap_.arena_start and used == mheap_.arena_used.
 // The heap bitmap comprises 2 bits for each pointer-sized word in that range,
@@ -34,8 +34,8 @@
 // 需要在gc时进行检查。高位bit的含义依赖于该word在对应分配对象中的位置。如果是对象
 // 的第一个word，高位bit是GC的marked位。在第二个word，高位bit是gc的checkmarked位
 // 在第三个及后面的word中，高位bit指示该对象仍然被描述（仍然是该对象的一部分)
-// 在这些word中，如果一个高位bit为0，对应的地位bit也是0，那么对象描述结束。
-// 00也被称作dead编码，它提示下面word对gc无意义。
+// 在这些word中，如果一个高位bit为0，对应的低位bit也是0，那么对象描述结束。
+// 00也被称作dead编码，它提示对象下面word对gc无意义。
 // In each 2-bit entry, the lower bit holds the same information as in the 1-bit
 // bitmaps: 0 means uninteresting and 1 means live pointer to be visited during GC.
 // The meaning of the high bit depends on the position of the word being described
@@ -48,6 +48,7 @@
 // in the object are uninteresting to the garbage collector.
 //
 // 当写入字节时这个2bit的项被分割，一个字节中的前4位时mark位，后4位时指针位
+// 这种形式允许从1bit的形式到4bit的形式的拷贝保持位的连续性。
 // The 2-bit entries are split when written into the byte, so that the top half
 // of the byte contains 4 mark bits and the bottom half contains 4 pointer bits.
 // This form allows a copy from the 1-bit to the 4-bit form to keep the
@@ -73,6 +74,9 @@
 // for the second word of the object holds the checkmark bit.
 // When not in checkmark mode, this bit is set to 1.
 //
+// 可能分配的最小的大小是8字节。在32bit的机器上，这意味着，每个分配的对象
+// 具有2个word，因此有checkmark bit的位置。然而在64bit的机器上，8字节的分配
+// 只有一个word，因此不存在第二个bit对来编码checkmark。
 // The smallest possible allocation is 8 bytes. On a 32-bit machine, that
 // means every allocated object has two words, so there is room for the
 // checkmark bit. On a 64-bit machine, however, the 8-byte allocation is
@@ -143,6 +147,7 @@ func subtract1(p *byte) *byte { // 返回p-1位置的字节
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(p)) - 1))
 }
 
+// 每次arena_used被扩展时，mHeap_MapBits被调用。它扩展位图用于映射新的arena内存区域。
 // mHeap_MapBits is called each time arena_used is extended.
 // It maps any additional bitmap memory needed for the new arena memory.
 // It must be called with the expected new value of arena_used,
@@ -161,11 +166,11 @@ func (h *mheap) mapBits(arena_used uintptr) {
 	n := (arena_used - mheap_.arena_start) / heapBitmapScale
 	n = round(n, bitmapChunk)
 	n = round(n, sys.PhysPageSize)
-	if h.bitmap_mapped >= n {
+	if h.bitmap_mapped >= n { // 如果位图区域已经被映射了，返回
 		return
 	}
 
-	sysMap(unsafe.Pointer(h.arena_start-n), n-h.bitmap_mapped, h.arena_reserved, &memstats.gc_sys)
+	sysMap(unsafe.Pointer(h.arena_start-n), n-h.bitmap_mapped, h.arena_reserved, &memstats.gc_sys) // 重新映射内存区域
 	h.bitmap_mapped = n
 }
 

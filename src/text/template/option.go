@@ -39,7 +39,7 @@ type option struct {
 //	"missingkey=error"
 //		Execution stops immediately with an error.
 //
-func (t *Template) Option(opt ...string) *Template {
+func (t *Template) Option(opt ...string) *Template { // 重新设定模板选项
 	t.init()
 	for _, s := range opt {
 		t.setOption(s)

@@ -259,7 +259,7 @@ func Publish(name string, v Var) { // 声明一个命名的导出变量，注册
 }
 
 // Get retrieves a named exported variable.
-func Get(name string) Var {
+func Get(name string) Var { // 返回名称为name的变量
 	mutex.RLock()
 	defer mutex.RUnlock()
 	return vars[name]

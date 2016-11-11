@@ -54,8 +54,8 @@ func finishsweep_m(stw bool) {
 	}
 }
 
-func bgsweep(c chan int) {
-	sweep.g = getg()
+func bgsweep(c chan int) { // 在goroutine中执行sweep
+	sweep.g = getg() // 获取当前的goroutine，是一个sweep goroutine
 
 	lock(&sweep.lock)
 	sweep.parked = true                                           // 先将使sweep进入parked休眠状态
@@ -68,7 +68,7 @@ func bgsweep(c chan int) {
 			Gosched()
 		}
 		lock(&sweep.lock)
-		if !gosweepdone() {
+		if !gosweepdone() { // 如果sweep没有结束，继续下一个
 			// This can happen if a GC runs between
 			// gosweepone returning ^0 above
 			// and the lock being acquired.

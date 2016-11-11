@@ -17,7 +17,7 @@ type writer interface { // writer接口，需要实现WriteString函数
 // These replacements permit compatibility with old numeric entities that
 // assumed Windows-1252 encoding.
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/tokenization.html#consume-a-character-reference
-var replacementTable = [...]rune{
+var replacementTable = [...]rune{ // 替换表
 	'\u20AC', // First entry is what 0x80 should be replaced with.
 	'\u0081',
 	'\u201A',
@@ -179,7 +179,7 @@ var htmlEscaper = strings.NewReplacer(
 // escapes only five such characters: <, >, &, ' and ".
 // UnescapeString(EscapeString(s)) == s always holds, but the converse isn't
 // always true.
-func EscapeString(s string) string {
+func EscapeString(s string) string { // 执行字符串替换
 	return htmlEscaper.Replace(s)
 }
 
@@ -188,7 +188,7 @@ func EscapeString(s string) string {
 // unescapes to "á", as does "&#225;" and "&xE1;".
 // UnescapeString(EscapeString(s)) == s always holds, but the converse isn't
 // always true.
-func UnescapeString(s string) string {
+func UnescapeString(s string) string { // 执行字符串反替换
 	i := strings.IndexByte(s, '&')
 
 	if i < 0 {

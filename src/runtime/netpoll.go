@@ -11,6 +11,9 @@ import (
 	"unsafe"
 )
 
+// 集成的networker poller(平台无关的部分)
+// 具体的实现(epoll/kqueue)必须定义下列函数:
+// func netpollinit()
 // Integrated network poller (platform-independent part).
 // A particular implementation (epoll/kqueue) must define the following functions:
 // func netpollinit()			// to initialize the poller
@@ -53,10 +56,10 @@ type pollDesc struct { // 网络poller描述结构，如果是epoll的话会保�
 	fd      uintptr // 对应打开句柄
 	closing bool    // 该句柄是否关闭
 	seq     uintptr // protects from stale timers and ready notifications
-	rg      uintptr // pdReady, pdWait, G waiting for read or nil
+	rg      uintptr // pdReady, pdWait, G waiting for read or nil 保存等待读的goroutine或者为nil
 	rt      timer   // read deadline timer (set if rt.f != nil) 读deadline定时器
 	rd      int64   // read deadline 读deadline
-	wg      uintptr // pdReady, pdWait, G waiting for write or nil
+	wg      uintptr // pdReady, pdWait, G waiting for write or nil 保存等待写的goroutine或者为nil
 	wt      timer   // write deadline timer 写deadline定时器
 	wd      int64   // write deadline 写deadline
 	user    uint32  // user settable cookie
@@ -311,10 +314,11 @@ func netpollblockcommit(gp *g, gpp unsafe.Pointer) bool { // 将gpp的值设置�
 	return atomic.Casuintptr((*uintptr)(gpp), pdWait, uintptr(unsafe.Pointer(gp)))
 }
 
+// 如果IO就绪，返回true，如果超时或者关闭返回false
 // returns true if IO is ready, or false if timedout or closed
 // waitio - wait only for completed IO, ignore errors 等待pd发生mode事件,waitio设置为true时只等待完整的IO，忽略错误
 func netpollblock(pd *pollDesc, mode int32, waitio bool) bool { // io等待成功时返回true，超时或者关闭返回false
-	gpp := &pd.rg
+	gpp := &pd.rg    // 默认选择等待读的goroutine
 	if mode == 'w' { // 根据模式选择不同的指针值
 		gpp = &pd.wg
 	}
@@ -329,7 +333,7 @@ func netpollblock(pd *pollDesc, mode int32, waitio bool) bool { // io等待成�
 		if old != 0 { // 如果当前标识不为0，重复设置了
 			throw("netpollblock: double wait")
 		}
-		if atomic.Casuintptr(gpp, 0, pdWait) {
+		if atomic.Casuintptr(gpp, 0, pdWait) { // 将gpp的值设置为pdWait
 			break
 		}
 	}

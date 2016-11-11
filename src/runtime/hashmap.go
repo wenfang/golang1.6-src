@@ -24,6 +24,8 @@ package runtime
 // of buckets twice as big.  Buckets are incrementally
 // copied from the old bucket array to the new bucket array.
 //
+// Map迭代器遍历buckets数组，并且按遍历顺序返回keys
+// 为了维护迭代语义，不会再bucket中移动keys(如果这样做了，可以可能会返回0到2次)
 // Map iterators walk through the array of buckets and
 // return the keys in walk order (bucket #, then overflow
 // chain order, then bucket index).  To maintain iteration
@@ -76,7 +78,7 @@ const (
 	// Fast versions cannot handle big values - the cutoff size for
 	// fast versions in ../../cmd/internal/gc/walk.go must be at most this value.
 	maxKeySize   = 128
-	maxValueSize = 128 // 最大的key大小和最大的值大小
+	maxValueSize = 128 // 最大的key大小和最大的值大小，都是128个字节
 
 	// data offset should be the size of the bmap struct, but needs to be
 	// aligned correctly.  For amd64p32 this means 64-bit alignment
@@ -85,7 +87,8 @@ const (
 		b bmap
 		v int64
 	}{}.v)
-	// tophash可能的取值
+	// tophash可能的取值，为特殊的marks保留一些可能性
+	// 每个bucket(包括溢出的buckets，如果有的话)
 	// Possible tophash values.  We reserve a few possibilities for special marks.
 	// Each bucket (including its overflow buckets, if any) will have either all or none of its
 	// entries in the evacuated* states (except during the evacuate() method, which only happens
@@ -99,7 +102,7 @@ const (
 	// flags
 	iterator    = 1 // there may be an iterator using buckets
 	oldIterator = 2 // there may be an iterator using oldbuckets
-	hashWriting = 4 // a goroutine is writing to the map
+	hashWriting = 4 // a goroutine is writing to the map 有个goroutine正在写该map
 
 	// sentinel bucket ID for iterator checks
 	noCheck = 1<<(8*sys.PtrSize) - 1
@@ -109,14 +112,14 @@ const (
 type hmap struct { // Go map结构的头部
 	// Note: the format of the Hmap is encoded in ../../cmd/internal/gc/reflect.go and
 	// ../reflect/type.go.  Don't change this structure without also changing that code!
-	count int // # live cells == size of map.  Must be first (used by len() builtin) map的大小
+	count int // # live cells == size of map.  Must be first (used by len() builtin) map的大小，被内建的len使用
 	flags uint8
 	B     uint8  // log_2 of # of buckets (can hold up to loadFactor * 2^B items)
 	hash0 uint32 // hash seed hash种子
 
 	buckets    unsafe.Pointer // array of 2^B Buckets. may be nil if count==0. 指向buckets的指针，如果count==0，为nil
 	oldbuckets unsafe.Pointer // previous bucket array of half the size, non-nil only when growing 在map grow时使用
-	nevacuate  uintptr        // progress counter for evacuation (buckets less than this have been evacuated)
+	nevacuate  uintptr        // progress counter for evacuation (buckets less than this have been evacuated) evacuation过程的计数器
 
 	// If both key and value do not contain pointers and are inline, then we mark bucket
 	// type as containing no pointers. This avoids scanning such maps.
@@ -445,10 +448,10 @@ func mapassign1(t *maptype, h *hmap, key unsafe.Pointer, val unsafe.Pointer) { /
 		msanread(key, t.key.size)
 		msanread(val, t.elem.size)
 	}
-	if h.flags&hashWriting != 0 {
+	if h.flags&hashWriting != 0 { // 如果已经在写了，抛出异常
 		throw("concurrent map writes")
 	}
-	h.flags |= hashWriting
+	h.flags |= hashWriting // 设置map的写标志
 
 	alg := t.key.alg
 	hash := alg.hash(key, uintptr(h.hash0))
@@ -540,13 +543,13 @@ again:
 	h.count++
 
 done:
-	if h.flags&hashWriting == 0 {
+	if h.flags&hashWriting == 0 { // 写标记消除了，表明有人也在写，抛出异常
 		throw("concurrent map writes")
 	}
-	h.flags &^= hashWriting
+	h.flags &^= hashWriting // 去掉hashWriting写标志
 }
 
-func mapdelete(t *maptype, h *hmap, key unsafe.Pointer) { // 从map中删除一个可以
+func mapdelete(t *maptype, h *hmap, key unsafe.Pointer) { // 从map中删除一个key
 	if raceenabled && h != nil {
 		callerpc := getcallerpc(unsafe.Pointer(&t))
 		pc := funcPC(mapdelete)

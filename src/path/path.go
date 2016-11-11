@@ -174,7 +174,7 @@ func Ext(path string) string {
 // If the path is empty, Base returns ".".
 // If the path consists entirely of slashes, Base returns "/".
 func Base(path string) string { // 路径中最后一级的名称
-	if path == "" {
+	if path == "" { // 如果path为空，返回当前路径
 		return "."
 	}
 	// Strip trailing slashes.
@@ -186,7 +186,7 @@ func Base(path string) string { // 路径中最后一级的名称
 		path = path[i+1:]
 	}
 	// If empty now, it had only slashes.
-	if path == "" {
+	if path == "" { // 如果path为空，返回/,因为去掉了一个/
 		return "/"
 	}
 	return path

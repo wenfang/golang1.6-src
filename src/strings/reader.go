@@ -32,7 +32,7 @@ func (r *Reader) Len() int { // 返回未读部分的长度
 // Size is the number of bytes available for reading via ReadAt.
 // The returned value is always the same and is not affected by calls
 // to any other method.
-func (r *Reader) Size() int64 { return int64(len(r.s)) }
+func (r *Reader) Size() int64 { return int64(len(r.s)) } // 返回原始字符串的长度
 
 func (r *Reader) Read(b []byte) (n int, err error) { // 实现Read方法，尽量填充b
 	if len(b) == 0 {
@@ -47,7 +47,7 @@ func (r *Reader) Read(b []byte) (n int, err error) { // 实现Read方法，尽�
 	return
 }
 
-func (r *Reader) ReadAt(b []byte, off int64) (n int, err error) {
+func (r *Reader) ReadAt(b []byte, off int64) (n int, err error) { // 从某个偏移量开始读取数据
 	// cannot modify state - see io.ReaderAt
 	if off < 0 {
 		return 0, errors.New("strings.Reader.ReadAt: negative offset")
@@ -62,7 +62,7 @@ func (r *Reader) ReadAt(b []byte, off int64) (n int, err error) {
 	return
 }
 
-func (r *Reader) ReadByte() (b byte, err error) {
+func (r *Reader) ReadByte() (b byte, err error) { // 读取一个字节
 	r.prevRune = -1
 	if r.i >= int64(len(r.s)) {
 		return 0, io.EOF
@@ -72,7 +72,7 @@ func (r *Reader) ReadByte() (b byte, err error) {
 	return
 }
 
-func (r *Reader) UnreadByte() error {
+func (r *Reader) UnreadByte() error { // 反读取一个字节
 	r.prevRune = -1
 	if r.i <= 0 {
 		return errors.New("strings.Reader.UnreadByte: at beginning of string")

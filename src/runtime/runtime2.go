@@ -70,12 +70,12 @@ type funcval struct {
 
 type iface struct { // 接口
 	tab  *itab
-	data unsafe.Pointer
+	data unsafe.Pointer // 指向数据域
 }
 
 type eface struct { // 空接口
 	_type *_type
-	data  unsafe.Pointer
+	data  unsafe.Pointer // 指向数据域
 }
 
 func efaceOf(ep *interface{}) *eface {
@@ -509,11 +509,11 @@ type _func struct {
 	nfuncdata int32
 }
 
-// layout of Itab known to compilers
+// layout of Itab known to compilers 编译器中Itab的布局
 // allocated in non-garbage-collected memory
 type itab struct {
 	inter  *interfacetype
-	_type  *_type
+	_type  *_type // type switch时从这个域获得接口真实类型
 	link   *itab
 	bad    int32
 	unused int32

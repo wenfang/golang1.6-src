@@ -14,6 +14,7 @@ import (
 	"unsafe"
 )
 
+// malloc分配的主堆内存
 // Main malloc heap.
 // The heap itself is the "free[]" and "large" arrays,
 // but all the other global data is here too.
@@ -25,9 +26,9 @@ type mheap struct { // 主malloc的堆
 	busylarge mSpanList                // busy lists of large objects length >= _MaxMHeapList
 	allspans  **mspan                  // all spans out there
 	gcspans   **mspan                  // copy of allspans referenced by gc marker or sweeper
-	nspan     uint32
-	sweepgen  uint32 // sweep generation, see comment in mspan
-	sweepdone uint32 // all spans are swept
+	nspan     uint32                   // 堆中mspan的数量
+	sweepgen  uint32                   // sweep generation, see comment in mspan sweep的代数
+	sweepdone uint32                   // all spans are swept 所有的span已经被sweep
 	// span lookup
 	spans        **mspan
 	spans_mapped uintptr
@@ -53,6 +54,7 @@ type mheap struct { // 主malloc的堆
 	arena_end      uintptr
 	arena_reserved bool
 
+	// 对小对象的central列表
 	// central free lists for small size classes.
 	// the padding makes sure that the MCentrals are
 	// spaced CacheLineSize bytes apart, so that each MCentral.lock
@@ -62,10 +64,10 @@ type mheap struct { // 主malloc的堆
 		pad      [sys.CacheLineSize]byte
 	}
 
-	spanalloc             fixalloc // allocator for span*
-	cachealloc            fixalloc // allocator for mcache*
-	specialfinalizeralloc fixalloc // allocator for specialfinalizer*
-	specialprofilealloc   fixalloc // allocator for specialprofile*
+	spanalloc             fixalloc // allocator for span* span结构的分配器
+	cachealloc            fixalloc // allocator for mcache* mcache结构的分配器
+	specialfinalizeralloc fixalloc // allocator for specialfinalizer* specialfinalizer结构的分配器
+	specialprofilealloc   fixalloc // allocator for specialprofile* specialprofile结构的分配器
 	speciallock           mutex    // lock for special record allocators.
 }
 
@@ -104,26 +106,27 @@ const (
 	_MSpanDead
 )
 
+// span链接列表的结构
 // mSpanList heads a linked list of spans.
 //
 // Linked list structure is based on BSD's "tail queue" data structure.
 type mSpanList struct {
-	first *mspan  // first span in list, or nil if none
-	last  **mspan // last span's next field, or first if none
+	first *mspan  // first span in list, or nil if none 列表中的第一个mspan
+	last  **mspan // last span's next field, or first if none 列表中的最后一个mspan
 }
 
 type mspan struct {
 	next *mspan     // next span in list, or nil if none
 	prev **mspan    // previous span's next field, or list head's first field if none
-	list *mSpanList // For debugging. TODO: Remove.
+	list *mSpanList // For debugging. TODO: Remove. 所属的mspan列表
 
 	start    pageID    // starting page number 起始页面号
 	npages   uintptr   // number of pages in span 该mspan中页面的数量
 	freelist gclinkptr // list of free objects 空闲对象的列表
-	// sweep 代数
-	// 如果sweepgen == 堆的sweepgen-2，该span需要进行sweeping
-	// 如果sweepgen == 堆的sweepgen-1，该span当前正在进行sweeping
-	// 如果sweepgen == 堆的sweepgen，该span被sweep了，准备使用
+	// sweep 的代数
+	// 如果sweepgen == 堆的sweepgen-2，该span需要进行清除
+	// 如果sweepgen == 堆的sweepgen-1，该span当前正在进行清除
+	// 如果sweepgen == 堆的sweepgen，该span被清除了，准备使用
 	// 每次gc后堆得sweepgen值都会增2
 	// sweep generation:
 	// if sweepgen == h->sweepgen - 2, the span needs sweeping
@@ -149,7 +152,7 @@ type mspan struct {
 	baseMask    uintptr  // if non-0, elemsize is a power of 2, & this will get object allocation base
 }
 
-func (s *mspan) base() uintptr { // 获得mspan对应的起始地址
+func (s *mspan) base() uintptr { // 获得mspan对应的起始地址，获得绝对地址
 	return uintptr(s.start << _PageShift)
 }
 
@@ -179,14 +182,14 @@ func recordspan(vh unsafe.Pointer, p unsafe.Pointer) { // 将mspan p记录到堆
 	h := (*mheap)(vh)                       // 将vh转换为mheap结构
 	s := (*mspan)(p)                        // 将p转换为mspan结构
 	if len(h_allspans) >= cap(h_allspans) { // 如果h_allspans slice不够用了
-		n := 64 * 1024 / sys.PtrSize
-		if n < cap(h_allspans)*3/2 {
+		n := 64 * 1024 / sys.PtrSize // n保存一个64K可以保存多少个指针
+		if n < cap(h_allspans)*3/2 { // 至少扩展1.5倍的spans的大小
 			n = cap(h_allspans) * 3 / 2
 		}
 		var new []*mspan
-		sp := (*slice)(unsafe.Pointer(&new)) // 转换为slice指针
-		sp.array = sysAlloc(uintptr(n)*sys.PtrSize, &memstats.other_sys)
-		if sp.array == nil { // 分配空间失败
+		sp := (*slice)(unsafe.Pointer(&new))                             // 转换为slice指针
+		sp.array = sysAlloc(uintptr(n)*sys.PtrSize, &memstats.other_sys) // 分配可以保存n个指针的空间
+		if sp.array == nil {                                             // 分配空间失败
 			throw("runtime: cannot allocate memory")
 		}
 		sp.len = len(h_allspans) // 获得h_allspans的长度
@@ -229,7 +232,7 @@ func inheap(b uintptr) bool {
 
 // TODO: spanOf and spanOfUnchecked are open-coded in a lot of places.
 // Use the functions instead.
-
+// spanOf返回指针p所属的mspan，如果p不是堆得指针，或者没有span包含p，spanOf返回nil
 // spanOf returns the span of p. If p does not point into the heap or
 // no span contains p, spanOf returns nil.
 func spanOf(p uintptr) *mspan {
@@ -247,17 +250,17 @@ func spanOfUnchecked(p uintptr) *mspan { // 没有检查的返回mspan
 }
 
 func mlookup(v uintptr, base *uintptr, size *uintptr, sp **mspan) int32 {
-	_g_ := getg()
+	_g_ := getg() // 获得当前的goroutine
 
-	_g_.m.mcache.local_nlookup++
-	if sys.PtrSize == 4 && _g_.m.mcache.local_nlookup >= 1<<30 {
+	_g_.m.mcache.local_nlookup++                                 // 本地查找次数增加
+	if sys.PtrSize == 4 && _g_.m.mcache.local_nlookup >= 1<<30 { // 如果是32位系统，且local_nlookup次数过多purge cachedstas防止溢出
 		// purge cache stats to prevent overflow
 		lock(&mheap_.lock)
 		purgecachedstats(_g_.m.mcache)
 		unlock(&mheap_.lock)
 	}
 
-	s := mheap_.lookupMaybe(unsafe.Pointer(v))
+	s := mheap_.lookupMaybe(unsafe.Pointer(v)) // 查找对应的mspan
 	if sp != nil {
 		*sp = s
 	}
@@ -297,20 +300,21 @@ func mlookup(v uintptr, base *uintptr, size *uintptr, sp **mspan) int32 {
 
 // Initialize the heap.
 func (h *mheap) init(spans_size uintptr) {
+	// 初始化几个结构的分配器
 	h.spanalloc.init(unsafe.Sizeof(mspan{}), recordspan, unsafe.Pointer(h), &memstats.mspan_sys)
 	h.cachealloc.init(unsafe.Sizeof(mcache{}), nil, nil, &memstats.mcache_sys)
 	h.specialfinalizeralloc.init(unsafe.Sizeof(specialfinalizer{}), nil, nil, &memstats.other_sys)
 	h.specialprofilealloc.init(unsafe.Sizeof(specialprofile{}), nil, nil, &memstats.other_sys)
 
 	// h->mapcache needs no init
-	for i := range h.free {
+	for i := range h.free { // 初始化free和busy两个MSpanList结构
 		h.free[i].init()
 		h.busy[i].init()
 	}
-
+	// 初始化freelarge和busylarge两个MSpanList结构
 	h.freelarge.init()
 	h.busylarge.init()
-	for i := range h.central {
+	for i := range h.central { // 初始化mcentral列表
 		h.central[i].mcentral.init(int32(i))
 	}
 
@@ -704,13 +708,13 @@ func (h *mheap) lookup(v unsafe.Pointer) *mspan {
 // other garbage in their middles, so we have to
 // check for that.
 func (h *mheap) lookupMaybe(v unsafe.Pointer) *mspan {
-	if uintptr(v) < h.arena_start || uintptr(v) >= h.arena_used {
+	if uintptr(v) < h.arena_start || uintptr(v) >= h.arena_used { // 如果地址不在堆得区域内，返回nil
 		return nil
 	}
-	p := uintptr(v) >> _PageShift
+	p := uintptr(v) >> _PageShift // 返回地址v所在的页偏移
 	q := p
-	q -= h.arena_start >> _PageShift
-	s := h_spans[q]
+	q -= h.arena_start >> _PageShift // 返回页的相对位置
+	s := h_spans[q]                  // 找到对应的mspan
 	if s == nil || p < uintptr(s.start) || uintptr(v) >= uintptr(unsafe.Pointer(s.limit)) || s.state != _MSpanInUse {
 		return nil
 	}
