@@ -100,7 +100,7 @@ const (
 	bitPointer = 1 << 0 // 指针位，一个字节的低四位
 	bitMarked  = 1 << 4 // Mark位，一个字节的高四位
 
-	heapBitsShift   = 1                     // shift offset between successive bitPointer or bitMarked entries
+	heapBitsShift   = 1                     // shift offset between successive bitPointer or bitMarked entries 堆位图的偏移1
 	heapBitmapScale = sys.PtrSize * (8 / 2) // number of data bytes described by one heap bitmap byte
 
 	// all mark/pointer bits in a byte
@@ -174,12 +174,12 @@ func (h *mheap) mapBits(arena_used uintptr) {
 	h.bitmap_mapped = n
 }
 
-// heapBits提供了到位图bit的访问，对单个堆的word.
+// 对堆上的单个word，heapBits提供了到位图bit的访问
 // heapBits provides access to the bitmap bits for a single heap word.
 // The methods on heapBits take value receivers so that the compiler
 // can more easily inline calls to those methods and registerize the
 // struct fields independently.
-type heapBits struct { // 堆位图的位置
+type heapBits struct { // 堆位图的结构
 	bitp  *uint8 // bit位所在的uint8位置,_arena_start后的位图
 	shift uint32 // 在4个bit上的偏移
 }

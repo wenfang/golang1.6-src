@@ -15,22 +15,23 @@ import (
 )
 
 // malloc分配的主堆内存
+// heap本身在free和large数组
 // Main malloc heap.
 // The heap itself is the "free[]" and "large" arrays,
 // but all the other global data is here too.
 type mheap struct { // 主malloc的堆
-	lock      mutex
+	lock      mutex                    // 主malloc的锁
 	free      [_MaxMHeapList]mSpanList // free lists of given length
 	freelarge mSpanList                // free lists length >= _MaxMHeapList
 	busy      [_MaxMHeapList]mSpanList // busy lists of large objects of given length
 	busylarge mSpanList                // busy lists of large objects length >= _MaxMHeapList
-	allspans  **mspan                  // all spans out there
+	allspans  **mspan                  // all spans out there 所有的mspan都在这个列表中
 	gcspans   **mspan                  // copy of allspans referenced by gc marker or sweeper
 	nspan     uint32                   // 堆中mspan的数量
 	sweepgen  uint32                   // sweep generation, see comment in mspan sweep的代数
 	sweepdone uint32                   // all spans are swept 所有的span已经被sweep
 	// span lookup
-	spans        **mspan
+	spans        **mspan // 用作mspan的查找，也就是h_spans
 	spans_mapped uintptr
 
 	// Proportional sweep
@@ -41,7 +42,7 @@ type mheap struct { // 主malloc的堆
 	// TODO(austin): pagesInUse should be a uintptr, but the 386
 	// compiler can't 8-byte align fields.
 
-	// Malloc stats.
+	// Malloc stats. Malloc的状态
 	largefree  uint64                  // bytes freed for large objects (>maxsmallsize)
 	nlargefree uint64                  // number of frees for large objects (>maxsmallsize)
 	nsmallfree [_NumSizeClasses]uint64 // number of frees for small objects (<=maxsmallsize)
@@ -54,7 +55,7 @@ type mheap struct { // 主malloc的堆
 	arena_end      uintptr
 	arena_reserved bool
 
-	// 对小对象的central列表
+	// 对小对象的central空闲列表
 	// central free lists for small size classes.
 	// the padding makes sure that the MCentrals are
 	// spaced CacheLineSize bytes apart, so that each MCentral.lock
@@ -100,7 +101,7 @@ var mheap_ mheap // 全局的mheap结构
 //   stack or in-use to free. Because concurrent GC may read a pointer
 //   and then look up its span, the span state must be monotonic.
 const (
-	_MSpanInUse = iota // allocated for garbage collected heap
+	_MSpanInUse = iota // allocated for garbage collected heap 改Mspan用作可被垃圾收集的堆内存
 	_MSpanStack        // allocated for use by stack allocator 该Mspan用作栈分配
 	_MSpanFree
 	_MSpanDead
@@ -109,6 +110,7 @@ const (
 // span链接列表的结构
 // mSpanList heads a linked list of spans.
 //
+// Linked List结构基于BSD的tail queue数据结构
 // Linked list structure is based on BSD's "tail queue" data structure.
 type mSpanList struct {
 	first *mspan  // first span in list, or nil if none 列表中的第一个mspan
@@ -126,7 +128,7 @@ type mspan struct {
 	// sweep 的代数
 	// 如果sweepgen == 堆的sweepgen-2，该span需要进行清除
 	// 如果sweepgen == 堆的sweepgen-1，该span当前正在进行清除
-	// 如果sweepgen == 堆的sweepgen，该span被清除了，准备使用
+	// 如果sweepgen == 堆的sweepgen，该span被清除了，可以被使用
 	// 每次gc后堆得sweepgen值都会增2
 	// sweep generation:
 	// if sweepgen == h->sweepgen - 2, the span needs sweeping
@@ -135,18 +137,18 @@ type mspan struct {
 	// h->sweepgen is incremented by 2 after every GC
 
 	sweepgen    uint32   // 该mspan的代数
-	divMul      uint32   // for divide by elemsize - divMagic.mul
+	divMul      uint32   // for divide by elemsize - divMagic.mul 加速除操作的魔数
 	ref         uint16   // capacity - number of objects in freelist 容量,freelist中对象的数量
-	sizeclass   uint8    // size class size class的值
-	incache     bool     // being used by an mcache
-	state       uint8    // mspaninuse etc
+	sizeclass   uint8    // size class 对应的size class的值
+	incache     bool     // being used by an mcache 是否正在被一个mcache使用
+	state       uint8    // mspaninuse etc mspan当前的状态
 	needzero    uint8    // needs to be zeroed before allocation 在分配前需要清0
-	divShift    uint8    // for divide by elemsize - divMagic.shift
-	divShift2   uint8    // for divide by elemsize - divMagic.shift2
+	divShift    uint8    // for divide by elemsize - divMagic.shift 加速除操作的魔数
+	divShift2   uint8    // for divide by elemsize - divMagic.shift2 加速除操作的魔数
 	elemsize    uintptr  // computed from sizeclass or from npages 保存的元素大小
 	unusedsince int64    // first time spotted by gc in mspanfree state
 	npreleased  uintptr  // number of pages released to the os
-	limit       uintptr  // end of data in span
+	limit       uintptr  // end of data in span 在span中数据的结束位置
 	speciallock mutex    // guards specials list
 	specials    *special // linked list of special records sorted by offset.
 	baseMask    uintptr  // if non-0, elemsize is a power of 2, & this will get object allocation base
@@ -165,7 +167,7 @@ func (s *mspan) layout() (size, n, total uintptr) { // 获得可保存的元素�
 	return
 }
 
-// 指向所有格mspan结构的指针
+// 指向所有的mspan结构的指针，其实也就是mheap结构中的allspans
 var h_allspans []*mspan // TODO: make this h.allspans once mheap can be defined in Go
 
 // h_spans是一个查找表，将虚拟的页面ID映射到*mspan。对已分配的span，映射到span本身。
@@ -178,6 +180,7 @@ var h_allspans []*mspan // TODO: make this h.allspans once mheap can be defined 
 // For pages that have never been allocated, h_spans entries are nil.
 var h_spans []*mspan // TODO: make this h.spans once mheap can be defined in Go
 
+// 将一个mspan加入到mheap中
 func recordspan(vh unsafe.Pointer, p unsafe.Pointer) { // 将mspan p记录到堆vh中
 	h := (*mheap)(vh)                       // 将vh转换为mheap结构
 	s := (*mspan)(p)                        // 将p转换为mspan结构
@@ -186,23 +189,24 @@ func recordspan(vh unsafe.Pointer, p unsafe.Pointer) { // 将mspan p记录到堆
 		if n < cap(h_allspans)*3/2 { // 至少扩展1.5倍的spans的大小
 			n = cap(h_allspans) * 3 / 2
 		}
-		var new []*mspan
+		var new []*mspan                                                 // 声明一个mspan指针数组
 		sp := (*slice)(unsafe.Pointer(&new))                             // 转换为slice指针
 		sp.array = sysAlloc(uintptr(n)*sys.PtrSize, &memstats.other_sys) // 分配可以保存n个指针的空间
-		if sp.array == nil {                                             // 分配空间失败
+		if sp.array == nil {                                             // 分配空间失败，抛出异常
 			throw("runtime: cannot allocate memory")
 		}
 		sp.len = len(h_allspans) // 获得h_allspans的长度
 		sp.cap = n
 		if len(h_allspans) > 0 { // 将原有的span拷贝过来
 			copy(new, h_allspans)
+			// 如果老的数组正在被sweep引用，不要释放
 			// Don't free the old array if it's referenced by sweep.
 			// See the comment in mgc.go.
 			if h.allspans != mheap_.gcspans {
 				sysFree(unsafe.Pointer(h.allspans), uintptr(cap(h_allspans))*sys.PtrSize, &memstats.other_sys)
 			}
 		}
-		h_allspans = new
+		h_allspans = new // 更换了mspan的列表
 		h.allspans = (**mspan)(unsafe.Pointer(sp.array))
 	}
 	h_allspans = append(h_allspans, s) // 将mspan s加入到h_allspans slice中
@@ -215,7 +219,7 @@ func recordspan(vh unsafe.Pointer, p unsafe.Pointer) { // 将mspan p记录到堆
 // Non-preemptible because it is used by write barriers.
 //go:nowritebarrier
 //go:nosplit
-func inheap(b uintptr) bool {
+func inheap(b uintptr) bool { // 传入一个地址，传出是否在堆上
 	if b == 0 || b < mheap_.arena_start || b >= mheap_.arena_used { // 如果在堆空间以外，返回false
 		return false
 	}
@@ -245,16 +249,17 @@ func spanOf(p uintptr) *mspan {
 // spanOfUnchecked is equivalent to spanOf, but the caller must ensure
 // that p points into the heap (that is, mheap_.arena_start <= p <
 // mheap_.arena_used).
-func spanOfUnchecked(p uintptr) *mspan { // 没有检查的返回mspan
+func spanOfUnchecked(p uintptr) *mspan { // 返回p所在的mspan,但是不做范围检查
 	return h_spans[(p-mheap_.arena_start)>>_PageShift]
 }
 
+// 查找到v指针所在的mspan的对应元素的基地址base和可存放的元素的大小size，mspan本身由sp传出
 func mlookup(v uintptr, base *uintptr, size *uintptr, sp **mspan) int32 {
 	_g_ := getg() // 获得当前的goroutine
 
 	_g_.m.mcache.local_nlookup++                                 // 本地查找次数增加
 	if sys.PtrSize == 4 && _g_.m.mcache.local_nlookup >= 1<<30 { // 如果是32位系统，且local_nlookup次数过多purge cachedstas防止溢出
-		// purge cache stats to prevent overflow
+		// purge cache stats to prevent overflow purge cache状态，避免溢出
 		lock(&mheap_.lock)
 		purgecachedstats(_g_.m.mcache)
 		unlock(&mheap_.lock)
@@ -262,9 +267,9 @@ func mlookup(v uintptr, base *uintptr, size *uintptr, sp **mspan) int32 {
 
 	s := mheap_.lookupMaybe(unsafe.Pointer(v)) // 查找对应的mspan
 	if sp != nil {
-		*sp = s
+		*sp = s // 由sp传出mspan
 	}
-	if s == nil {
+	if s == nil { // 如果找到了mspan为空
 		if base != nil {
 			*base = 0
 		}
@@ -274,31 +279,31 @@ func mlookup(v uintptr, base *uintptr, size *uintptr, sp **mspan) int32 {
 		return 0
 	}
 
-	p := uintptr(s.start) << _PageShift
-	if s.sizeclass == 0 {
+	p := uintptr(s.start) << _PageShift // 获得mspan起始地址
+	if s.sizeclass == 0 {               // 如果是大对象
 		// Large object.
 		if base != nil {
-			*base = p
+			*base = p // 设置基地址
 		}
 		if size != nil {
-			*size = s.npages << _PageShift
+			*size = s.npages << _PageShift // 设置大小
 		}
 		return 1
 	}
-
+	// 如果是小对象，获得元素大小
 	n := s.elemsize
 	if base != nil {
 		i := (uintptr(v) - uintptr(p)) / n
-		*base = p + i*n
+		*base = p + i*n // base为元素的起始地址
 	}
-	if size != nil {
+	if size != nil { // 可存放的元素的大小
 		*size = n
 	}
 
 	return 1
 }
 
-// Initialize the heap.
+// Initialize the heap. 初始化heap
 func (h *mheap) init(spans_size uintptr) {
 	// 初始化几个结构的分配器
 	h.spanalloc.init(unsafe.Sizeof(mspan{}), recordspan, unsafe.Pointer(h), &memstats.mspan_sys)
@@ -324,6 +329,7 @@ func (h *mheap) init(spans_size uintptr) {
 	sp.cap = int(spans_size / sys.PtrSize)
 }
 
+// mHeap_mapSpans保证spans被映射到直到arena_used
 // mHeap_MapSpans makes sure that the spans are mapped
 // up to the new value of arena_used.
 //
@@ -337,41 +343,44 @@ func (h *mheap) mapSpans(arena_used uintptr) {
 	n := arena_used
 	n -= h.arena_start
 	n = n / _PageSize * sys.PtrSize
-	n = round(n, sys.PhysPageSize)
-	if h.spans_mapped >= n {
+	n = round(n, sys.PhysPageSize) // 取得已经映射了多少页面
+	if h.spans_mapped >= n {       // 页面已经被映射了，直接返回
 		return
 	}
 	sysMap(add(unsafe.Pointer(h.spans), h.spans_mapped), n-h.spans_mapped, h.arena_reserved, &memstats.other_sys)
-	h.spans_mapped = n
+	h.spans_mapped = n // 已经被映射了
 }
 
+// sweep列表中的spans，直到至少回收了npages个页面到堆上
+// 返回真正回收了多少页面
 // Sweeps spans in list until reclaims at least npages into heap.
 // Returns the actual number of pages reclaimed.
 func (h *mheap) reclaimList(list *mSpanList, npages uintptr) uintptr {
 	n := uintptr(0)
-	sg := mheap_.sweepgen
+	sg := mheap_.sweepgen // 获取当前sweep的代数
 retry:
-	for s := list.first; s != nil; s = s.next {
-		if s.sweepgen == sg-2 && atomic.Cas(&s.sweepgen, sg-2, sg-1) {
-			list.remove(s)
+	for s := list.first; s != nil; s = s.next { // 遍历mSpanList
+		if s.sweepgen == sg-2 && atomic.Cas(&s.sweepgen, sg-2, sg-1) { // 如果改mspan需要进行sweep
+			list.remove(s) // 从列表中删除该mspan
 			// swept spans are at the end of the list
-			list.insertBack(s)
+			list.insertBack(s) // 将该mspan放到列表最后
 			unlock(&h.lock)
-			snpages := s.npages
-			if s.sweep(false) {
-				n += snpages
+			snpages := s.npages // 获取该mspan中页面的数量
+			if s.sweep(false) { // 对页面执行sweep
+				n += snpages // 增加已经被sweep的页面的数量
 			}
 			lock(&h.lock)
-			if n >= npages {
+			if n >= npages { // 已经sweep了足够的页面，返回
 				return n
 			}
 			// the span could have been moved elsewhere
 			goto retry
 		}
-		if s.sweepgen == sg-1 {
+		if s.sweepgen == sg-1 { // 该span正在被后台sweeper进行sweep，略过
 			// the span is being sweept by background sweeper, skip
 			continue
 		}
+		// 已经sweep的空span，所有后续的mspan或者已经被sweep了，或者正在sweep过程中
 		// already swept empty span,
 		// all subsequent ones must also be either swept or in process of sweeping
 		break
@@ -379,27 +388,31 @@ retry:
 	return n
 }
 
+// sweep并且回收至少npage个页面，在分配npage个页面前调用
 // Sweeps and reclaims at least npage pages into heap.
 // Called before allocating npage pages.
 func (h *mheap) reclaim(npage uintptr) {
+	// 首先尝试sweep busy的span，回收大对象的，也就是size的值大于npage
 	// First try to sweep busy spans with large objects of size >= npage,
 	// this has good chances of reclaiming the necessary space.
 	for i := int(npage); i < len(h.busy); i++ {
-		if h.reclaimList(&h.busy[i], npage) != 0 {
+		if h.reclaimList(&h.busy[i], npage) != 0 { // 回收完成，返回
 			return // Bingo!
 		}
 	}
 
+	// 尝试回收busylarge中的对象
 	// Then -- even larger objects.
 	if h.reclaimList(&h.busylarge, npage) != 0 {
 		return // Bingo!
 	}
 
+	// 现在尝试回收小对象
 	// Now try smaller objects.
 	// One such object is not enough, so we need to reclaim several of them.
-	reclaimed := uintptr(0)
+	reclaimed := uintptr(0) // 用reclaimed记录已经回收的页面的数量
 	for i := 0; i < int(npage) && i < len(h.busy); i++ {
-		reclaimed += h.reclaimList(&h.busy[i], npage-reclaimed)
+		reclaimed += h.reclaimList(&h.busy[i], npage-reclaimed) // 在小对象列表中执行回收
 		if reclaimed >= npage {
 			return
 		}
@@ -408,11 +421,11 @@ func (h *mheap) reclaim(npage uintptr) {
 	// Now sweep everything that is not yet swept.
 	unlock(&h.lock)
 	for {
-		n := sweepone()
-		if n == ^uintptr(0) { // all spans are swept
+		n := sweepone()       // 执行一次sweepone，返回sweep的页面的数量
+		if n == ^uintptr(0) { // all spans are swept 如果所有的页面已经被sweep了，跳出
 			break
 		}
-		reclaimed += n
+		reclaimed += n // 增加已经回收的页面的数量
 		if reclaimed >= npage {
 			break
 		}
@@ -420,18 +433,20 @@ func (h *mheap) reclaim(npage uintptr) {
 	lock(&h.lock)
 }
 
+// 分配一个保存npage个页面的mspan,sizeclass为该mspan保存的元素的大小
 // Allocate a new span of npage pages from the heap for GC'd memory
 // and record its size class in the HeapMap and HeapMapCache.
 func (h *mheap) alloc_m(npage uintptr, sizeclass int32, large bool) *mspan {
-	_g_ := getg()
-	if _g_ != _g_.m.g0 {
+	_g_ := getg()        // 获取当前的goroutine
+	if _g_ != _g_.m.g0 { // 如果没有在g0的栈进行分配，抛出异常
 		throw("_mheap_alloc not on g0 stack")
 	}
 	lock(&h.lock)
 
+	// 为了避免过度的栈增长，在分配n个页面前，需要sweep并且回收至少n个页面
 	// To prevent excessive heap growth, before allocating n pages
 	// we need to sweep and reclaim at least n pages.
-	if h.sweepdone == 0 {
+	if h.sweepdone == 0 { // 如果并不是所有的mspan都被sweep了
 		// TODO(austin): This tends to sweep a large number of
 		// spans in order to find a few completely free spans
 		// (for example, in the garbage benchmark, this sweeps
@@ -439,33 +454,34 @@ func (h *mheap) alloc_m(npage uintptr, sizeclass int32, large bool) *mspan {
 		// If GC kept a bit for whether there were any marks
 		// in a span, we could release these free spans
 		// at the end of GC and eliminate this entirely.
-		h.reclaim(npage)
+		h.reclaim(npage) // 尝试回收npage个页面
 	}
 
+	// 从cache向global传输统计信息
 	// transfer stats from cache to global
 	memstats.heap_scan += uint64(_g_.m.mcache.local_scan)
 	_g_.m.mcache.local_scan = 0
 	memstats.tinyallocs += uint64(_g_.m.mcache.local_tinyallocs)
 	_g_.m.mcache.local_tinyallocs = 0
 
-	s := h.allocSpanLocked(npage)
-	if s != nil {
+	s := h.allocSpanLocked(npage) // 开始执行mspan的分配
+	if s != nil {                 // 如果mspan分配成功
 		// Record span info, because gc needs to be
 		// able to map interior pointer to containing span.
-		atomic.Store(&s.sweepgen, h.sweepgen)
-		s.state = _MSpanInUse
-		s.freelist = 0
-		s.ref = 0
-		s.sizeclass = uint8(sizeclass)
-		if sizeclass == 0 {
-			s.elemsize = s.npages << _PageShift
+		atomic.Store(&s.sweepgen, h.sweepgen) // 把heap的sweepgen拷贝到mspan上
+		s.state = _MSpanInUse                 // 该mspan的状态为使用中
+		s.freelist = 0                        // 空闲列表为0
+		s.ref = 0                             // 空闲列表中元素的数量为0
+		s.sizeclass = uint8(sizeclass)        // 设置该mspan的sizeclass
+		if sizeclass == 0 {                   // sizeclass为0，做大对象分配
+			s.elemsize = s.npages << _PageShift // 可分配的元素大小和mspan可用容量相同
 			s.divShift = 0
 			s.divMul = 0
 			s.divShift2 = 0
 			s.baseMask = 0
 		} else {
-			s.elemsize = uintptr(class_to_size[sizeclass])
-			m := &class_to_divmagic[sizeclass]
+			s.elemsize = uintptr(class_to_size[sizeclass]) // 如果sizeclass不为0，转换为具体的大小
+			m := &class_to_divmagic[sizeclass]             // 返回对应sizeclass的除的魔数
 			s.divShift = m.shift
 			s.divMul = m.mul
 			s.divShift2 = m.shift2
@@ -473,15 +489,15 @@ func (h *mheap) alloc_m(npage uintptr, sizeclass int32, large bool) *mspan {
 		}
 
 		// update stats, sweep lists
-		h.pagesInUse += uint64(npage)
+		h.pagesInUse += uint64(npage) // 正在使用的页面的数量增加
 		if large {
-			memstats.heap_objects++
-			atomic.Xadd64(&memstats.heap_live, int64(npage<<_PageShift))
+			memstats.heap_objects++                                      // 堆对象的数量增加
+			atomic.Xadd64(&memstats.heap_live, int64(npage<<_PageShift)) // 增加活跃的内存数量
 			// Swept spans are at the end of lists.
-			if s.npages < uintptr(len(h.free)) {
-				h.busy[s.npages].insertBack(s)
+			if s.npages < uintptr(len(h.free)) { // 如果mspan分配的页面数量可以包含在mheap的free列表中
+				h.busy[s.npages].insertBack(s) // 将分配的mspan加入busy列表
 			} else {
-				h.busylarge.insertBack(s)
+				h.busylarge.insertBack(s) // 将分配的mspan加入busylarge列表
 			}
 		}
 	}
@@ -504,9 +520,10 @@ func (h *mheap) alloc_m(npage uintptr, sizeclass int32, large bool) *mspan {
 	// order these writes. On the read side, the data dependency
 	// between p and the index in h_spans orders the reads.
 	unlock(&h.lock)
-	return s
+	return s // 返回mspan
 }
 
+// 与alloc_m类似，但是可以控制是否将分配的mspan中的内容清0
 func (h *mheap) alloc(npage uintptr, sizeclass int32, large bool, needzero bool) *mspan {
 	// Don't do any operations that lock the heap on the G stack.
 	// It might trigger stack growth, and the stack growth code needs
@@ -525,6 +542,7 @@ func (h *mheap) alloc(npage uintptr, sizeclass int32, large bool, needzero bool)
 	return s
 }
 
+// 分配npage个页面，用作栈空间
 func (h *mheap) allocStack(npage uintptr) *mspan {
 	_g_ := getg()
 	if _g_ != _g_.m.g0 {
@@ -533,7 +551,7 @@ func (h *mheap) allocStack(npage uintptr) *mspan {
 	lock(&h.lock)
 	s := h.allocSpanLocked(npage)
 	if s != nil {
-		s.state = _MSpanStack
+		s.state = _MSpanStack // 该mspan用作栈使用
 		s.freelist = 0
 		s.ref = 0
 		memstats.stacks_inuse += uint64(s.npages << _PageShift)
@@ -547,12 +565,12 @@ func (h *mheap) allocStack(npage uintptr) *mspan {
 // Allocates a span of the given size.  h must be locked.
 // The returned span has been removed from the
 // free list, but its state is still MSpanFree.
-func (h *mheap) allocSpanLocked(npage uintptr) *mspan {
+func (h *mheap) allocSpanLocked(npage uintptr) *mspan { // 分配一个对应指定npage个的mspan
 	var list *mSpanList
 	var s *mspan
 
 	// Try in fixed-size lists up to max.
-	for i := int(npage); i < len(h.free); i++ {
+	for i := int(npage); i < len(h.free); i++ { // 先找free队列中的mspan
 		list = &h.free[i]
 		if !list.isEmpty() {
 			s = list.first
@@ -562,8 +580,8 @@ func (h *mheap) allocSpanLocked(npage uintptr) *mspan {
 
 	// Best fit in list of large spans.
 	list = &h.freelarge
-	s = h.allocLarge(npage)
-	if s == nil {
+	s = h.allocLarge(npage) // 从freelarge队列中查找mspan
+	if s == nil {           // 如果没有查找到
 		if !h.grow(npage) {
 			return nil
 		}
@@ -573,7 +591,7 @@ func (h *mheap) allocSpanLocked(npage uintptr) *mspan {
 		}
 	}
 
-HaveSpan:
+HaveSpan: // 找到了mspan
 	// Mark span in use.
 	if s.state != _MSpanFree {
 		throw("MHeap_AllocLocked - MSpan not free")
@@ -581,7 +599,7 @@ HaveSpan:
 	if s.npages < npage {
 		throw("MHeap_AllocLocked - bad npages")
 	}
-	list.remove(s)
+	list.remove(s) // 从列表中移除mspan
 	if s.inList() {
 		throw("still in list")
 	}
@@ -628,15 +646,17 @@ HaveSpan:
 }
 
 // Allocate a span of exactly npage pages from the list of large spans.
-func (h *mheap) allocLarge(npage uintptr) *mspan {
+func (h *mheap) allocLarge(npage uintptr) *mspan { // 在freelarge列表中查找最合适的mspan
 	return bestFit(&h.freelarge, npage, nil)
 }
 
+// 查找mspan列表list，使mspan页的数量正好>=npage
+// 如果发现多个最小的mspan，使用起始地址最小的那个
 // Search list for smallest span with >= npage pages.
 // If there are multiple smallest spans, take the one
 // with the earliest starting address.
 func bestFit(list *mSpanList, npage uintptr, best *mspan) *mspan {
-	for s := list.first; s != nil; s = s.next {
+	for s := list.first; s != nil; s = s.next { // 变量mspan列表
 		if s.npages < npage {
 			continue
 		}
@@ -647,6 +667,7 @@ func bestFit(list *mSpanList, npage uintptr, best *mspan) *mspan {
 	return best
 }
 
+// 试图添加至少npage个页面的内存到heap上，返回是否成功
 // Try to add at least npage pages of memory to the heap,
 // returning whether it worked.
 //
@@ -656,9 +677,9 @@ func (h *mheap) grow(npage uintptr) bool {
 	// the operating system needs to track; also amortizes
 	// the overhead of an operating system mapping.
 	// Allocate a multiple of 64kB.
-	npage = round(npage, (64<<10)/_PageSize)
-	ask := npage << _PageShift
-	if ask < _HeapAllocChunk {
+	npage = round(npage, (64<<10)/_PageSize) // 分配页面必须为64K的整数倍
+	ask := npage << _PageShift               // 需要分配的空间大小
+	if ask < _HeapAllocChunk {               // 至少申请1M
 		ask = _HeapAllocChunk
 	}
 
@@ -824,6 +845,7 @@ func (h *mheap) freeSpanLocked(s *mspan, acctinuse, acctidle bool, unusedsince i
 	h.freeList(s.npages).insert(s)
 }
 
+// 返回npages个页面对应的free的mspanlist
 func (h *mheap) freeList(npages uintptr) *mSpanList {
 	if npages < uintptr(len(h.free)) {
 		return &h.free[npages]
@@ -831,6 +853,7 @@ func (h *mheap) freeList(npages uintptr) *mSpanList {
 	return &h.freelarge
 }
 
+// 返回npages个页面对应的busy的mspanlist
 func (h *mheap) busyList(npages uintptr) *mSpanList {
 	if npages < uintptr(len(h.free)) {
 		return &h.busy[npages]
@@ -848,12 +871,12 @@ func scavengelist(list *mSpanList, now, limit uint64) uintptr {
 		return 0
 	}
 
-	if list.isEmpty() {
+	if list.isEmpty() { // 列表为空，返回0
 		return 0
 	}
 
 	var sumreleased uintptr
-	for s := list.first; s != nil; s = s.next {
+	for s := list.first; s != nil; s = s.next { // 遍历整个列表
 		if (now-uint64(s.unusedsince)) > limit && s.npreleased != s.npages {
 			released := (s.npages - s.npreleased) << _PageShift
 			memstats.heap_released += uint64(released)

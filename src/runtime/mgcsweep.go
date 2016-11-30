@@ -158,7 +158,7 @@ func (s *mspan) ensureSwept() {
 	}
 }
 
-// 释放mark阶段没有被mark的块释放，或者收集finalizer，为下一次gc周期清除mark标记。
+// 释放mark阶段没有被mark的块，或者收集finalizer，为下一次gc周期清除mark标记。
 // 如果Span被归还到了mheap中，返回true，如果preserve为true，不将Span返回到heap中
 // 也不将Span重新加入MCentral列表中，由调用者负责处理
 // Sweep frees or collects finalizers for blocks not marked in the mark phase.
@@ -188,7 +188,7 @@ func (s *mspan) sweep(preserve bool) bool {
 
 	cl := s.sizeclass  //该mspan对应的sizeclass
 	size := s.elemsize // 该mspan保存的元素大小
-	res := false
+	res := false       // res作为返回值
 	nfree := 0
 
 	var head, end gclinkptr
@@ -197,9 +197,9 @@ func (s *mspan) sweep(preserve bool) bool {
 	freeToHeap := false
 
 	// Mark any free objects in this span so we don't collect them.
-	sstart := uintptr(s.start << _PageShift)
-	for link := s.freelist; link.ptr() != nil; link = link.ptr().next { // mark fee
-		if uintptr(link) < sstart || s.limit <= uintptr(link) {
+	sstart := uintptr(s.start << _PageShift)                            // 获得mspan起始位置对应的页面号
+	for link := s.freelist; link.ptr() != nil; link = link.ptr().next { // mark fee 遍历mspan空闲对象的列表
+		if uintptr(link) < sstart || s.limit <= uintptr(link) { // 如果link没有在mspan范围内，抛出异常
 			// Free list is corrupted.
 			dumpFreeList(s)
 			throw("free list corrupted")

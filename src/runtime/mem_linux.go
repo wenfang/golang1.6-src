@@ -38,8 +38,9 @@ func addrspace_free(v unsafe.Pointer, n uintptr) bool {
 	return true
 }
 
-// mmap从v开始的一段内存
+// mmap从v开始的一段内存，但是要求固定在p地址上
 func mmap_fixed(v unsafe.Pointer, n uintptr, prot, flags, fd int32, offset uint32) unsafe.Pointer {
+	// 先尝试mmap
 	p := mmap(v, n, prot, flags, fd, offset)
 	// On some systems, mmap ignores v without
 	// MAP_FIXED, so retry if the address space is free.
@@ -171,13 +172,18 @@ func sysFault(v unsafe.Pointer, n uintptr) {
 	mmap(v, n, _PROT_NONE, _MAP_ANON|_MAP_PRIVATE|_MAP_FIXED, -1, 0)
 }
 
+// 从地址v开始，保留n大小的空间
 func sysReserve(v unsafe.Pointer, n uintptr, reserved *bool) unsafe.Pointer {
+	// 在64位系统上，如果设置了ulimit -v，也就是虚拟内存限制，如果我们保留了
+	// 太多的地址空间，会有人抱怨。因此如果我们至少能保留64K，就可以假设保留
+	// 空间是成功的
 	// On 64-bit, people with ulimit -v set complain if we reserve too
 	// much address space.  Instead, assume that the reservation is okay
 	// if we can reserve at least 64K and check the assumption in SysMap.
 	// Only user-mode Linux (UML) rejects these requests.
+	// 如果在64bit系统上，并且要分配的内存大于4G
 	if sys.PtrSize == 8 && uint64(n) > 1<<32 {
-		p := mmap_fixed(v, 64<<10, _PROT_NONE, _MAP_ANON|_MAP_PRIVATE, -1, 0)
+		p := mmap_fixed(v, 64<<10, _PROT_NONE, _MAP_ANON|_MAP_PRIVATE, -1, 0) // 映射64K的空间
 		if p != v {
 			if uintptr(p) >= 4096 {
 				munmap(p, 64<<10)

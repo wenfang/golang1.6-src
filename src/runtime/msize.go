@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// 小对象的class类
 // Malloc small size classes.
 //
 // See malloc.go for overview.
@@ -9,6 +10,7 @@
 // The size classes are chosen so that rounding an allocation
 // request up to the next size class wastes at most 12.5% (1.125x).
 //
+// 每个size class有它自己的页面计数
 // Each size class has its own page count that gets allocated
 // and chopped up when new objects of the size class are needed.
 // That page count is chosen so that chopping up the run of
@@ -29,6 +31,7 @@ package runtime
 
 // Size classes.  Computed and initialized by InitSizes.
 //
+// SizeToClass 返回size class, size class = 0 保留作为非small
 // SizeToClass(0 <= n <= MaxSmallSize) returns the size class,
 //	1 <= sizeclass < NumSizeClasses, for n.
 //	Size class 0 is reserved to mean "not small".
@@ -50,7 +53,7 @@ var class_to_size [_NumSizeClasses]int32        // 67个class_to_size数组，�
 var class_to_allocnpages [_NumSizeClasses]int32 // 67个class_to_allocnpages数组，每类对应要分配多少个page
 var class_to_divmagic [_NumSizeClasses]divMagic // 67个div魔数
 
-var size_to_class8 [1024/8 + 1]int8                     // 127个size_to_class8数组
+var size_to_class8 [1024/8 + 1]int8                     // 129个size_to_class8数组
 var size_to_class128 [(_MaxSmallSize-1024)/128 + 1]int8 // 249个的size_to_class128数组
 
 func sizeToClass(size int32) int32 { // 传入size返回class
@@ -65,29 +68,31 @@ func sizeToClass(size int32) int32 { // 传入size返回class
 
 func initSizes() {
 	// Initialize the runtime·class_to_size table (and choose class sizes in the process). 初始化class_to_size table
-	class_to_size[0] = 0
-	sizeclass := 1 // 0 means no class
-	align := 8     // 以8个字节为一个align
-	for size := align; size <= _MaxSmallSize; size += align {
+	class_to_size[0] = 0                                      // 第一类对应的大小为0
+	sizeclass := 1                                            // 0 means no class 0 意味着没有class
+	align := 8                                                // 以8个字节为一个align
+	for size := align; size <= _MaxSmallSize; size += align { // 从8个字节开始，一直到32K，遍历
 		if size&(size-1) == 0 { // bump alignment once in a while
 			if size >= 2048 {
 				align = 256
 			} else if size >= 128 {
 				align = size / 8
-			} else if size >= 16 {
+			} else if size >= 16 { // 如果大于等于16，变为16
 				align = 16 // required for x86 SSE instructions, if we want to use them
 			}
 		}
-		if align&(align-1) != 0 {
+		if align&(align-1) != 0 { // align必须为2的幂
 			throw("InitSizes - bug")
 		}
 
+		// 使分配的页面足够大，保证最多浪费12.5%的空间
 		// Make the allocnpages big enough that
 		// the leftover is less than 1/8 of the total,
 		// so wasted space is at most 12.5%.
+		// allocsize大小为8K
 		allocsize := _PageSize
 		for allocsize%size > allocsize/8 {
-			allocsize += _PageSize
+			allocsize += _PageSize // 增长8K
 		}
 		npages := allocsize >> _PageShift
 
@@ -96,28 +101,30 @@ func initSizes() {
 		// objects into the page, we might as well
 		// use just this size instead of having two
 		// different sizes.
+		// 如果前一个sizeclass选择了相同的分配大小，仍然沿用
 		if sizeclass > 1 && npages == int(class_to_allocnpages[sizeclass-1]) && allocsize/size == allocsize/int(class_to_size[sizeclass-1]) {
 			class_to_size[sizeclass-1] = int32(size)
 			continue
 		}
 
-		class_to_allocnpages[sizeclass] = int32(npages)
-		class_to_size[sizeclass] = int32(size)
-		sizeclass++
+		class_to_allocnpages[sizeclass] = int32(npages) // 设置该sizeclass需要分配的页面
+		class_to_size[sizeclass] = int32(size)          // 设置该sizeclass对应的size大小
+		sizeclass++                                     // 增加sizeclass
 	}
-	if sizeclass != _NumSizeClasses {
+	if sizeclass != _NumSizeClasses { // 应该恰好覆盖了_NumSizeClasses个sizeclass，否则抛出异常
 		print("sizeclass=", sizeclass, " NumSizeClasses=", _NumSizeClasses, "\n")
 		throw("InitSizes - bad NumSizeClasses")
 	}
 
 	// Initialize the size_to_class tables.
+	// 初始化size_to_class表
 	nextsize := 0
-	for sizeclass = 1; sizeclass < _NumSizeClasses; sizeclass++ {
-		for ; nextsize < 1024 && nextsize <= int(class_to_size[sizeclass]); nextsize += 8 {
+	for sizeclass = 1; sizeclass < _NumSizeClasses; sizeclass++ { // 遍历每个sizeclass
+		for ; nextsize < 1024 && nextsize <= int(class_to_size[sizeclass]); nextsize += 8 { // 8个字节的增加
 			size_to_class8[nextsize/8] = int8(sizeclass)
 		}
 		if nextsize >= 1024 {
-			for ; nextsize <= int(class_to_size[sizeclass]); nextsize += 128 {
+			for ; nextsize <= int(class_to_size[sizeclass]); nextsize += 128 { // 128个字节的增加
 				size_to_class128[(nextsize-1024)/128] = int8(sizeclass)
 			}
 		}
@@ -148,7 +155,7 @@ func initSizes() {
 	}
 
 	for i := 1; i < len(class_to_size); i++ {
-		class_to_divmagic[i] = computeDivMagic(uint32(class_to_size[i]))
+		class_to_divmagic[i] = computeDivMagic(uint32(class_to_size[i])) // 设置每个class_to_size的除的魔数
 	}
 
 	return
@@ -175,9 +182,10 @@ dump:
 	throw("InitSizes failed")
 }
 
+// 返回真实分配size的大小
 // Returns size of the memory block that mallocgc will allocate if you ask for the size.
 func roundupsize(size uintptr) uintptr {
-	if size < _MaxSmallSize {
+	if size < _MaxSmallSize { // 如果在32K以内
 		if size <= 1024-8 {
 			return uintptr(class_to_size[size_to_class8[(size+7)>>3]])
 		} else {
@@ -187,7 +195,7 @@ func roundupsize(size uintptr) uintptr {
 	if size+_PageSize < size {
 		return size
 	}
-	return round(size, _PageSize)
+	return round(size, _PageSize) // 将size按8K大小对齐
 }
 
 // divMagic holds magic constants to implement division
@@ -214,13 +222,14 @@ func roundupsize(size uintptr) uintptr {
 // For more details see Hacker's Delight, Chapter 10, and
 // http://ridiculousfish.com/blog/posts/labor-of-division-episode-i.html
 // http://ridiculousfish.com/blog/posts/labor-of-division-episode-iii.html
-type divMagic struct {
+type divMagic struct { // 用作除的魔数
 	shift    uint8
 	mul      uint32
 	shift2   uint8
 	baseMask uintptr
 }
 
+// 计算除的魔数
 func computeDivMagic(d uint32) divMagic {
 	var m divMagic
 

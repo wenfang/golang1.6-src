@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-type slice struct {
+type slice struct { // slice的结构
 	array unsafe.Pointer // 指向数据的指针
 	len   int            // 当前slice的长度
 	cap   int            // 当前slice的容量

@@ -13,10 +13,10 @@ import "unsafe"
 // mcaches are allocated from non-GC'd memory, so any heap pointers
 // must be specially handled.
 type mcache struct {
-	// 下列成员在每个malloc调用时访问，因此成组出现
+	// 下列成员在每个malloc调用时访问，因此成组出现，为了更好的cache
 	// The following members are accessed on every malloc,
 	// so they are grouped here for better caching.
-	next_sample int32   // trigger heap sample after allocating this many bytes
+	next_sample int32   // trigger heap sample after allocating this many bytes 在分配了next_sample个字节后，触发heap采样
 	local_scan  uintptr // bytes of scannable heap allocated
 	// 分配小对象时使用
 	// Allocator cache for tiny objects w/o pointers.
@@ -79,14 +79,14 @@ type stackfreelist struct {
 var emptymspan mspan
 
 func allocmcache() *mcache { // 分配出mcache结构
-	lock(&mheap_.lock) // 先给mheap加锁
-	c := (*mcache)(mheap_.cachealloc.alloc())
+	lock(&mheap_.lock)                           // 先给mheap加锁
+	c := (*mcache)(mheap_.cachealloc.alloc())    // 分配一个mcache结构
 	unlock(&mheap_.lock)                         // 分配完结构后就给mheap解锁
 	memclr(unsafe.Pointer(c), unsafe.Sizeof(*c)) // 清除mcache结构
 	for i := 0; i < _NumSizeClasses; i++ {       // 对67个class的每个class，都设置为emptymspan
 		c.alloc[i] = &emptymspan // 设置为不包含空闲对象的dummy mspan
 	}
-	c.next_sample = nextSample()
+	c.next_sample = nextSample() // 设置下一个采样点
 	return c
 }
 

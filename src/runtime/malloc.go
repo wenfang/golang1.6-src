@@ -8,7 +8,7 @@
 
 // The main allocator works in runs of pages.
 // 小的内存分配(32kB以内)被取整到size classes中，共有大约100多个size类。
-// 每个size类都有用于分配object的空闲列表
+// 每个size类都有用于分配object的空闲列表。
 // Small allocation sizes (up to and including 32 kB) are
 // rounded to one of about 100 size classes, each of which
 // has its own free list of objects of exactly that size.
@@ -107,8 +107,8 @@ const (
 )
 
 const (
-	_PageShift = 13
-	_PageSize  = 1 << _PageShift
+	_PageShift = 13              // 页面偏移为13个位
+	_PageSize  = 1 << _PageShift // 页面大小为8K
 	_PageMask  = _PageSize - 1
 )
 
@@ -121,7 +121,7 @@ const (
 	// size classes.  NumSizeClasses is that number.  It's needed here
 	// because there are static arrays of this length; when msize runs its
 	// size choosing algorithm it double-checks that NumSizeClasses agrees.
-	_NumSizeClasses = 67
+	_NumSizeClasses = 67 // sizeclass的数量，67个
 
 	// Tunable constants. SmallSize的界限，32K
 	_MaxSmallSize = 32 << 10 // 32K
@@ -178,7 +178,7 @@ const (
 // Page number (address>>pageShift)
 type pageID uintptr
 
-const _MaxArena32 = 2 << 30
+const _MaxArena32 = 2 << 30 // 2G最大空间
 
 // OS-defined helpers:
 //
@@ -349,7 +349,7 @@ func mallocinit() { // 初始化malloc
 	// PageSize can be larger than OS definition of page size,
 	// so SysReserve can give us a PageSize-unaligned pointer.
 	// To overcome this we ask for PageSize more and round up the pointer.
-	p1 := round(p, _PageSize)
+	p1 := round(p, _PageSize) // 先将p按照页面对齐
 
 	mheap_.spans = (**mspan)(unsafe.Pointer(p1))
 	mheap_.bitmap = p1 + spansSize
@@ -392,17 +392,17 @@ func sysReserveHigh(n uintptr, reserved *bool) unsafe.Pointer {
 	return sysReserve(nil, n, reserved)
 }
 
-func (h *mheap) sysAlloc(n uintptr) unsafe.Pointer {
-	if n > h.arena_end-h.arena_used {
+func (h *mheap) sysAlloc(n uintptr) unsafe.Pointer { // 为堆分配n大小的空间
+	if n > h.arena_end-h.arena_used { // 如果所需的空间大于已经分配的空间
 		// We are in 32-bit mode, maybe we didn't use all possible address space yet.
 		// Reserve some more space.
-		p_size := round(n+_PageSize, 256<<20)
-		new_end := h.arena_end + p_size // Careful: can overflow
-		if h.arena_end <= new_end && new_end <= h.arena_start+_MaxArena32 {
+		p_size := round(n+_PageSize, 256<<20)                               // 用256M对齐
+		new_end := h.arena_end + p_size                                     // Careful: can overflow 计算出来新的结束地址
+		if h.arena_end <= new_end && new_end <= h.arena_start+_MaxArena32 { // 如果新空间在2G以内
 			// TODO: It would be bad if part of the arena
 			// is reserved and part is not.
 			var reserved bool
-			p := uintptr(sysReserve(unsafe.Pointer(h.arena_end), p_size, &reserved))
+			p := uintptr(sysReserve(unsafe.Pointer(h.arena_end), p_size, &reserved)) // 新保留p_size大小的空间
 			if p == 0 {
 				return nil
 			}
@@ -820,6 +820,7 @@ func profilealloc(mp *m, x unsafe.Pointer, size uintptr) {
 	mProf_Malloc(x, size)
 }
 
+// nextSample返回做heap profiling时的下一个取样点
 // nextSample returns the next sampling point for heap profiling.
 // It produces a random variable with a geometric distribution and
 // mean MemProfileRate. This is done by generating a uniformly

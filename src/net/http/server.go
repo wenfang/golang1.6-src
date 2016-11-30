@@ -227,7 +227,7 @@ const bufferBeforeChunkingSize = 2048
 //
 // See the comment above (*response).Write for the entire write flow.
 type chunkWriter struct {
-	res *response // 对应的response
+	res *response // 对应的response结构
 
 	// header is either nil or a deep clone of res.handlerHeader
 	// at the time of res.WriteHeader, if res.WriteHeader is
@@ -256,7 +256,7 @@ func (cw *chunkWriter) Write(p []byte) (n int, err error) { // 写chunk数据
 	}
 	if cw.res.req.Method == "HEAD" { // 如果请求的方法是HEAD
 		// Eat writes.
-		return len(p), nil // 不写出任何Body体数据，直接返回
+		return len(p), nil // 不写出任何Body体数据，直接返回，因为Header已经输出
 	}
 	if cw.chunking { // 如果使用chunked传输编码
 		_, err = fmt.Fprintf(cw.res.conn.bufw, "%x\r\n", len(p))
@@ -305,10 +305,10 @@ func (cw *chunkWriter) close() { // 关闭chunkWriter
 	}
 }
 
-// A response represents the server side of an HTTP response.
+// A response represents the server side of an HTTP response. response代表服务端的HTTP响应
 type response struct { // 代表服务端对http请求的响应
 	conn          *conn    // 对应底层的连接
-	req           *Request // request for this response 对应该连接的响应
+	req           *Request // request for this response 对应该响应的请求
 	reqBody       io.ReadCloser
 	wroteHeader   bool // reply header has been (logically) written
 	wroteContinue bool // 100 Continue response was written
@@ -325,7 +325,7 @@ type response struct { // 代表服务端对http请求的响应
 
 	written       int64 // number of bytes written in body
 	contentLength int64 // explicitly-declared Content-Length; or -1
-	status        int   // status code passed to WriteHeader
+	status        int   // status code passed to WriteHeader 传输给WriteHeader的状态码
 
 	// close connection after this reply.  set on request and
 	// updated after response from handler if there's a
@@ -433,8 +433,8 @@ func (w *response) ReadFrom(src io.Reader) (n int64, err error) {
 
 	// sendfile path:
 
-	if !w.wroteHeader {
-		w.WriteHeader(StatusOK)
+	if !w.wroteHeader { // 如果没有写出header
+		w.WriteHeader(StatusOK) // 写出header状态为200
 	}
 
 	if w.needsSniff() {
@@ -786,15 +786,15 @@ func (w *response) WriteHeader(code int) { // 写出response的头部
 		return
 	}
 	w.wroteHeader = true // 表明已经写出头部
-	w.status = code
+	w.status = code      // 写出头部的状态码
 
 	if w.calledHeader && w.cw.header == nil {
 		w.cw.header = w.handlerHeader.clone()
 	}
 
 	if cl := w.handlerHeader.get("Content-Length"); cl != "" {
-		v, err := strconv.ParseInt(cl, 10, 64)
-		if err == nil && v >= 0 {
+		v, err := strconv.ParseInt(cl, 10, 64) // 解析出来Content-Length的值
+		if err == nil && v >= 0 {              // 给contentLength赋值
 			w.contentLength = v
 		} else {
 			w.conn.server.logf("http: invalid Content-Length of %q", cl)
@@ -864,7 +864,7 @@ func (cw *chunkWriter) writeHeader(p []byte) { // 写header信息
 	if cw.wroteHeader { // 如果已经写出了header，直接返回
 		return
 	}
-	cw.wroteHeader = true
+	cw.wroteHeader = true // 设置已经写完header
 
 	w := cw.res
 	keepAlivesEnabled := w.conn.server.doKeepAlives() // 查看是否启动keep alive
