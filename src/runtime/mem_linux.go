@@ -134,7 +134,7 @@ func sysUnused(v unsafe.Pointer, n uintptr) {
 		}
 	}
 
-	madvise(v, n, _MADV_DONTNEED)
+	madvise(v, n, _MADV_DONTNEED) // 声明这段内存不再使用了
 }
 
 func sysUsed(v unsafe.Pointer, n uintptr) {

@@ -877,26 +877,26 @@ func copyValues(dst, src url.Values) {
 }
 
 func parsePostForm(r *Request) (vs url.Values, err error) { // 解析POST数据为Values
-	if r.Body == nil {
+	if r.Body == nil { // 如果body体为空，返回错误，没有body体
 		err = errors.New("missing form body")
 		return
 	}
-	ct := r.Header.Get("Content-Type")
+	ct := r.Header.Get("Content-Type") // 获取body内容类型
 	// RFC 2616, section 7.2.1 - empty type
 	//   SHOULD be treated as application/octet-stream
-	if ct == "" {
+	if ct == "" { // 如果内容类型为空，作为"applicaiton/octet-stream"使用
 		ct = "application/octet-stream"
 	}
-	ct, _, err = mime.ParseMediaType(ct)
+	ct, _, err = mime.ParseMediaType(ct) // 解析body体数据类型
 	switch {
 	case ct == "application/x-www-form-urlencoded": // 类型为默认的表单数据
-		var reader io.Reader = r.Body
-		maxFormSize := int64(1<<63 - 1)
-		if _, ok := r.Body.(*maxBytesReader); !ok {
-			maxFormSize = int64(10 << 20) // 10 MB is a lot of text.
-			reader = io.LimitReader(r.Body, maxFormSize+1)
+		var reader io.Reader = r.Body               // 将reader设置为body
+		maxFormSize := int64(1<<63 - 1)             // 表单最大大小
+		if _, ok := r.Body.(*maxBytesReader); !ok { // 如果不是maxBytesReader
+			maxFormSize = int64(10 << 20)                  // 10 MB is a lot of text.
+			reader = io.LimitReader(r.Body, maxFormSize+1) // 限制只能读10M
 		}
-		b, e := ioutil.ReadAll(reader)
+		b, e := ioutil.ReadAll(reader) // 读所有数据内容
 		if e != nil {
 			if err == nil {
 				err = e
@@ -940,12 +940,12 @@ func (r *Request) ParseForm() error { // 解析表单数据
 		if r.Method == "POST" || r.Method == "PUT" || r.Method == "PATCH" {
 			r.PostForm, err = parsePostForm(r) // 对POST,PUT和PATCH方法，解析表单数据
 		}
-		if r.PostForm == nil {
+		if r.PostForm == nil { // 如果PostForm还为nil，创建PostForm
 			r.PostForm = make(url.Values)
 		}
 	}
 	if r.Form == nil { // 如果Form表单为空
-		if len(r.PostForm) > 0 {
+		if len(r.PostForm) > 0 { // 如果PostForm大小非0
 			r.Form = make(url.Values)
 			copyValues(r.Form, r.PostForm) // 把Post表单的内容拷贝过来
 		}

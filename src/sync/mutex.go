@@ -20,7 +20,7 @@ import (
 // Mutexes can be created as part of other structures;
 // the zero value for a Mutex is an unlocked mutex.
 type Mutex struct { //Mutex排他锁
-	state int32  // 表明锁的状态信息，最后一位为1表明被锁定，倒数第2为表明是否刚被唤醒，然后前面的位表明等待者的数量
+	state int32  // 表明锁的状态信息，最后一位为1表明被锁定，倒数第2位表明是否刚被唤醒，然后前面的位表明等待者的数量
 	sema  uint32 // 等待睡眠的sema
 }
 
@@ -52,9 +52,9 @@ func (m *Mutex) Lock() { // 排他锁加锁
 	iter := 0      // 迭代次数
 	for {
 		old := m.state            // 获取Mutex的状态
-		new := old | mutexLocked  // 设置新状态置已被Lock标记
-		if old&mutexLocked != 0 { // 如果老的已经被标记了
-			if runtime_canSpin(iter) {
+		new := old | mutexLocked  // 设置新状态,置已被Lock标记
+		if old&mutexLocked != 0 { // 如果老的已经被标记为锁定了
+			if runtime_canSpin(iter) { // 如果能够进行spin，就是忙等
 				// Active spinning makes sense.
 				// Try to set mutexWoken flag to inform Unlock
 				// to not wake other blocked goroutines.
@@ -63,15 +63,15 @@ func (m *Mutex) Lock() { // 排他锁加锁
 					awoke = true
 				}
 				runtime_doSpin()
-				iter++
-				continue
+				iter++   // 迭代
+				continue // 继续下一个for
 			}
-			new = old + 1<<mutexWaiterShift
+			new = old + 1<<mutexWaiterShift // 等待者的数量增1
 		}
 		if awoke { // 当前的goroutine从睡眠中被唤醒，
 			// The goroutine has been woken from sleep,
 			// so we need to reset the flag in either case.
-			if new&mutexWoken == 0 {
+			if new&mutexWoken == 0 { // 如果是从睡眠中唤醒的，Woken位必须被置位
 				panic("sync: inconsistent mutex state")
 			}
 			new &^= mutexWoken // 将Woken位清0
@@ -82,7 +82,7 @@ func (m *Mutex) Lock() { // 排他锁加锁
 			}
 			runtime_Semacquire(&m.sema) // 当前的goroutine阻塞等待被唤醒
 			awoke = true                // 当前的goroutine被唤醒，重新执行一遍for循环
-			iter = 0
+			iter = 0                    // 迭代次数变为0，开始重新到for循环起始，尝试获得锁
 		}
 	}
 
@@ -117,7 +117,7 @@ func (m *Mutex) Unlock() { // 排他锁解锁
 			return
 		}
 		// Grab the right to wake someone.
-		new = (old - 1<<mutexWaiterShift) | mutexWoken      // 设置唤醒一个
+		new = (old - 1<<mutexWaiterShift) | mutexWoken      // 设置唤醒一个，添加唤醒标志
 		if atomic.CompareAndSwapInt32(&m.state, old, new) { // 尝试唤醒一次
 			runtime_Semrelease(&m.sema) // 唤醒等待者
 			return

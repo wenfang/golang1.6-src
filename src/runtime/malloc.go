@@ -221,7 +221,7 @@ const _MaxArena32 = 2 << 30 // 2G最大空间
 func mallocinit() { // 初始化malloc
 	initSizes()
 
-	if class_to_size[_TinySizeClass] != _TinySize {
+	if class_to_size[_TinySizeClass] != _TinySize { // 如果第2个sizeclass申请内存大小不是16个字节，抛出异常
 		throw("bad TinySizeClass")
 	}
 
@@ -891,7 +891,7 @@ var globalAlloc struct {
 // There is no associated free operation.
 // Intended for things like function/type/debug-related persistent data.
 // If align is 0, uses default align (currently 8).
-func persistentalloc(size, align uintptr, sysStat *uint64) unsafe.Pointer {
+func persistentalloc(size, align uintptr, sysStat *uint64) unsafe.Pointer { // 在系统栈上执行persistentalloc1
 	var p unsafe.Pointer
 	systemstack(func() {
 		p = persistentalloc1(size, align, sysStat)
@@ -902,7 +902,7 @@ func persistentalloc(size, align uintptr, sysStat *uint64) unsafe.Pointer {
 // Must run on system stack because stack growth can (re)invoke it.
 // See issue 9174.
 //go:systemstack
-func persistentalloc1(size, align uintptr, sysStat *uint64) unsafe.Pointer {
+func persistentalloc1(size, align uintptr, sysStat *uint64) unsafe.Pointer { // 分配size大小空间，按照align对齐
 	const (
 		chunk    = 256 << 10
 		maxBlock = 64 << 10 // VM reservation granularity is 64K on windows
