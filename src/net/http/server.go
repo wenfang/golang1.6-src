@@ -696,9 +696,9 @@ func (c *conn) readRequest() (w *response, err error) { // 读出请求返回响
 		}()
 	}
 
-	c.r.setReadLimit(c.server.initialReadLimitSize())
-	c.mu.Lock()                 // while using bufr
-	if c.lastMethod == "POST" { // 如果上一个方法为POST
+	c.r.setReadLimit(c.server.initialReadLimitSize()) // 设置读数据限制
+	c.mu.Lock()                                       // while using bufr
+	if c.lastMethod == "POST" {                       // 如果上一个方法为POST
 		// RFC 2616 section 4.1 tolerance for old buggy clients.
 		peek, _ := c.bufr.Peek(4) // ReadRequest will get err below
 		c.bufr.Discard(numLeadingCRorLF(peek))
@@ -1396,7 +1396,7 @@ func (c *conn) serve() { // serve一个新的连接
 		}
 	}()
 
-	if tlsConn, ok := c.rwc.(*tls.Conn); ok {
+	if tlsConn, ok := c.rwc.(*tls.Conn); ok { // 如果是tls连接
 		if d := c.server.ReadTimeout; d != 0 {
 			c.rwc.SetReadDeadline(time.Now().Add(d))
 		}
@@ -1470,7 +1470,7 @@ func (c *conn) serve() { // serve一个新的连接
 		// so we might as well run the handler in this goroutine.
 		// [*] Not strictly true: HTTP pipelining.  We could let them all process
 		// in parallel even if their responses need to be serialized.
-		serverHandler{c.server}.ServeHTTP(w, w.req)
+		serverHandler{c.server}.ServeHTTP(w, w.req) // 执行ServeHTTP
 		if c.hijacked() {
 			return
 		}
@@ -1790,15 +1790,15 @@ func RedirectHandler(url string, code int) Handler {
 // redirecting any request containing . or .. elements or repeated slashes
 // to an equivalent, cleaner URL.
 type ServeMux struct { // 多路分发结构
-	mu    sync.RWMutex
+	mu    sync.RWMutex // 读写锁，保护map m
 	m     map[string]muxEntry
 	hosts bool // whether any patterns contain hostnames 是否有pattern包含主机名
 }
 
 type muxEntry struct {
-	explicit bool // 该项是不是由用户主动添加的，如果patter以/结尾再添加一个不以/结尾的
-	h        Handler
-	pattern  string
+	explicit bool    // 该项是不是由用户主动添加的，如果patter以/结尾再添加一个不以/结尾的
+	h        Handler // 该项对应的http Handler
+	pattern  string  // 该项对应的url的pattern
 }
 
 // NewServeMux allocates and returns a new ServeMux.
@@ -1930,7 +1930,7 @@ func (mux *ServeMux) Handle(pattern string, handler Handler) { // 将pattern和h
 
 	mux.m[pattern] = muxEntry{explicit: true, h: handler, pattern: pattern} // 生成muxEntry项
 
-	if pattern[0] != '/' {
+	if pattern[0] != '/' { // 如果第一个字符不是/，改handler带有主机信息
 		mux.hosts = true
 	}
 

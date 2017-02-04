@@ -114,6 +114,7 @@ func linkFlags(rawFlags uint32) Flags {
 	return f
 }
 
+// 返回一个接口的地址
 // If the ifi is nil, interfaceAddrTable returns addresses for all
 // network interfaces.  Otherwise it returns addresses for a specific
 // interface.

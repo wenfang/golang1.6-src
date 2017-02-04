@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
+// Dialer结构包含连接到一个地址的选项，如果对应的域的值为0,表明没有这个选项
 // A Dialer contains options for connecting to an address.
 //
 // The zero value for each field is equivalent to dialing
 // without that option. Dialing with the zero value of Dialer
 // is therefore equivalent to just calling the Dial function.
-// Dialer结构包含连接到一个地址的选项，如果对应的域的值为0,表明没有这个选项
 type Dialer struct {
 	// Timeout is the maximum amount of time a dial will wait for
 	// a connect to complete. If Deadline is also set, it may fail
@@ -57,7 +57,7 @@ type Dialer struct {
 	// network connection.
 	// If zero, keep-alives are not enabled. Network protocols
 	// that do not support keep-alives ignore this field.
-	KeepAlive time.Duration
+	KeepAlive time.Duration // 指定活动连接的KeepAlive周期
 
 	// Cancel is an optional channel whose closure indicates that
 	// the dial should be canceled. Not all types of dials support
@@ -198,15 +198,16 @@ func Dial(network, address string) (Conn, error) { // 连接指定的地址
 // DialTimeout acts like Dial but takes a timeout.
 // The timeout includes name resolution, if required.
 func DialTimeout(network, address string, timeout time.Duration) (Conn, error) { // 具有超时设置的Dial
-	d := Dialer{Timeout: timeout}   // 设置超时Timeout
+	d := Dialer{Timeout: timeout}   // 设置一个新的Dial具有超时Timeout时间
 	return d.Dial(network, address) // 执行Dial连接
 }
 
+// dialContext保存所有dial操作的通用状态
 // dialContext holds common state for all dial operations.
 type dialContext struct {
 	Dialer
 	network, address string
-	finalDeadline    time.Time
+	finalDeadline    time.Time // 连接的超时时间
 }
 
 // Dial connects to the address on the named network.
@@ -216,7 +217,7 @@ type dialContext struct {
 func (d *Dialer) Dial(network, address string) (Conn, error) { // 连接到指定地址，返回Conn连接结构
 	finalDeadline := d.deadline(time.Now())                                // 返回deadline的绝对时间
 	addrs, err := resolveAddrList("dial", network, address, finalDeadline) // 解析出来要连接的地址
-	if err != nil {
+	if err != nil {                                                        // 如果解析地址发生错误，返回
 		return nil, &OpError{Op: "dial", Net: network, Source: nil, Addr: nil, Err: err}
 	}
 
@@ -245,8 +246,8 @@ func (d *Dialer) Dial(network, address string) (Conn, error) { // 连接到指�
 
 	if d.KeepAlive > 0 && err == nil { // 如果具有KeepAlive
 		if tc, ok := c.(*TCPConn); ok { // 设置连接的KeepAlive
-			setKeepAlive(tc.fd, true)
-			setKeepAlivePeriod(tc.fd, d.KeepAlive)
+			setKeepAlive(tc.fd, true)              // 设置连接的KeepAlive标记
+			setKeepAlivePeriod(tc.fd, d.KeepAlive) // 设置KeepAlive时间
 			testHookSetKeepAlive()
 		}
 	}
@@ -317,12 +318,13 @@ func dialSerialAsync(ctx *dialContext, ras addrList, timer *time.Timer, cancel <
 	}
 }
 
+// dialSerial 串行的连接一个地址列表，返回第一个成功的连接或者第一个错误
 // dialSerial connects to a list of addresses in sequence, returning
 // either the first successful connection, or the first error.
 func dialSerial(ctx *dialContext, ras addrList, cancel <-chan struct{}) (Conn, error) {
 	var firstErr error // The error from the first address is most relevant.
 
-	for i, ra := range ras {
+	for i, ra := range ras { // 遍历每一个地址
 		select {
 		case <-cancel:
 			return nil, &OpError{Op: "dial", Net: ctx.network, Source: ctx.LocalAddr, Addr: ra, Err: errCanceled}

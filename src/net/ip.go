@@ -635,7 +635,7 @@ func parseIPv6(s string, zoneAllowed bool) (ip IP, zone string) { // 将字符�
 // or IPv6 ("2001:4860:0:2001::68") form.
 // If s is not a valid textual representation of an IP address,
 // ParseIP returns nil.
-func ParseIP(s string) IP { // 将一个字符串解析为ip地址，返回解析后的ip地址
+func ParseIP(s string) IP { // 将一个字符串解析为ip地址，返回解析后的IP结构，如果不是一个有效的ip地址串，返回nil
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
 		case '.': // 如果是ipv4地址

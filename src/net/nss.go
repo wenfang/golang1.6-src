@@ -12,6 +12,7 @@ import (
 	"os"
 )
 
+// nssConf代表机器的/etc/nsswitch.conf文件的状态
 // nssConf represents the state of the machine's /etc/nsswitch.conf file.
 type nssConf struct {
 	err     error                  // any error encountered opening or parsing the file
@@ -65,7 +66,7 @@ func (c nssCriterion) standardStatusAction(last bool) bool {
 	return c.action == def
 }
 
-func parseNSSConfFile(file string) *nssConf {
+func parseNSSConfFile(file string) *nssConf { // 解析nssConf文件
 	f, err := os.Open(file)
 	if err != nil {
 		return &nssConf{err: err}

@@ -378,8 +378,8 @@ func readFull(r io.Reader) (all []byte, err error) {
 
 // goDebugString returns the value of the named GODEBUG key.
 // GODEBUG is of the form "key=val,key2=val2"
-func goDebugString(key string) string {
-	s := os.Getenv("GODEBUG")
+func goDebugString(key string) string { // 返回key为GODEBUG的value
+	s := os.Getenv("GODEBUG") // 获得环境变量GODEBUG的值
 	for i := 0; i < len(s)-len(key)-1; i++ {
 		if i > 0 && s[i-1] != ',' {
 			continue

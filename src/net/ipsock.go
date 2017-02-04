@@ -197,6 +197,8 @@ func JoinHostPort(host, port string) string { // 生成host:port的形式，如�
 	return host + ":" + port
 }
 
+// internetAddrList解析addr,可能是文字的IP地址或者是DNS名，返回internet协议族地址
+// 如果err非空，则至少包含一个有效地址
 // internetAddrList resolves addr, which may be a literal IP
 // address or a DNS name, and returns a list of internet protocol
 // family addresses. The result contains at least one address when

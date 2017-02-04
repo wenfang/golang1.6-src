@@ -27,10 +27,10 @@ var protocols = map[string]int{ // 从协议名到数值的映射
 func LookupHost(host string) (addrs []string, err error) { // 进行主机查找，查找ip地址，返回IP地址列表
 	// Make sure that no matter what we do later, host=="" is rejected.
 	// ParseIP, for example, does accept empty strings.
-	if host == "" {
+	if host == "" { // 如果主机为空字符串，返回错误
 		return nil, &DNSError{Err: errNoSuchHost.Error(), Name: host}
 	}
-	if ip := ParseIP(host); ip != nil {
+	if ip := ParseIP(host); ip != nil { // 如果是数字表示的主机名，直接返回
 		return []string{host}, nil
 	}
 	return lookupHost(host)
@@ -44,7 +44,7 @@ func LookupIP(host string) (ips []IP, err error) { // 查找主机名，返回IP
 	if host == "" { // 主机名为空，返回错误
 		return nil, &DNSError{Err: errNoSuchHost.Error(), Name: host}
 	}
-	if ip := ParseIP(host); ip != nil {
+	if ip := ParseIP(host); ip != nil { // 如果是数字表示的主机名，直接返回
 		return []IP{ip}, nil
 	}
 	addrs, err := lookupIPMerge(host)

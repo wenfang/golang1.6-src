@@ -13,19 +13,21 @@ import (
 	"syscall"
 )
 
+// conf 代表系统网络配置
 // conf represents a system's network configuration.
 type conf struct {
+	// 如果可用的话,forceCgoLookupHost强制总是使用CGO进行主机查找
 	// forceCgoLookupHost forces CGO to always be used, if available.
 	forceCgoLookupHost bool
 
-	netGo  bool // go DNS resolution forced
-	netCgo bool // cgo DNS resolution forced
+	netGo  bool // go DNS resolution forced 强制使用go的DNS解析
+	netCgo bool // cgo DNS resolution forced 强制使用cgo的DNS解析
 
 	// machine has an /etc/mdns.allow file
-	hasMDNSAllow bool
+	hasMDNSAllow bool // 机器上是否具有mdns.allow文件
 
-	goos          string // the runtime.GOOS, to ease testing
-	dnsDebugLevel int
+	goos          string // the runtime.GOOS, to ease testing go运行所在的操作系统类型
+	dnsDebugLevel int    // dns debug级别
 
 	nss    *nssConf
 	resolv *dnsConfig
@@ -37,21 +39,21 @@ var (
 )
 
 // systemConf returns the machine's network configuration.
-func systemConf() *conf {
-	confOnce.Do(initConfVal)
+func systemConf() *conf { // 返回机器的网络配置
+	confOnce.Do(initConfVal) // 只执行一次initConfVal
 	return confVal
 }
 
 func initConfVal() { // 初始化配置的值
-	dnsMode, debugLevel := goDebugNetDNS()
-	confVal.dnsDebugLevel = debugLevel
+	dnsMode, debugLevel := goDebugNetDNS() // 获得dns模式和debug级别
+	confVal.dnsDebugLevel = debugLevel     // 设置dns debug级别
 	confVal.netGo = netGo || dnsMode == "go"
 	confVal.netCgo = netCgo || dnsMode == "cgo"
 
-	if confVal.dnsDebugLevel > 0 {
+	if confVal.dnsDebugLevel > 0 { // 如果dns debug级别大于0
 		defer func() {
 			switch {
-			case confVal.netGo:
+			case confVal.netGo: // 如果设置了netGo
 				if netGo {
 					println("go package net: built with netgo build tag; using Go's DNS resolver")
 				} else {
@@ -68,7 +70,7 @@ func initConfVal() { // 初始化配置的值
 	// Darwin pops up annoying dialog boxes if programs try to do
 	// their own DNS requests. So always use cgo instead, which
 	// avoids that.
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == "darwin" { // 对darwin总是使用cgo的dns查找
 		confVal.forceCgoLookupHost = true
 		return
 	}
@@ -275,6 +277,8 @@ func (c *conf) hostLookupOrder(hostname string) (ret hostLookupOrder) {
 	return hostLookupCgo
 }
 
+// goDebugNetDNS 解析GODEBUG netdns的值
+// netdns的值可以使如下形式
 // goDebugNetDNS parses the value of the GODEBUG "netdns" value.
 // The netdns value can be of the form:
 //    1       // debug level 1
@@ -286,7 +290,7 @@ func (c *conf) hostLookupOrder(hostname string) (ret hostLookupOrder) {
 //    cgo+2   // same, but debug level 2
 // etc.
 func goDebugNetDNS() (dnsMode string, debugLevel int) {
-	goDebug := goDebugString("netdns")
+	goDebug := goDebugString("netdns") // 获得GODEBUG中netdns的值
 	parsePart := func(s string) {
 		if s == "" {
 			return
